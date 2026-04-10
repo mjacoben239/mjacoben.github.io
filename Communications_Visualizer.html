@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Communications Visualizer - Final Enhanced</title>
+<style>
+  :root{
+    --bg:#f4f4f1; --card:#ffffff; --panel:#fafafa; --canvas:#ffffff; --ink:#222; --muted:#555; --soft:#444; --line:#d9d9d9; --field:#ffffff; --field-border:#cfcfcf;
+    --accent:#d73a31; --blue:#2f57d3; --green:#228b5a; --orange:#c97b1a; --purple:#7a53c4;
+    --grid-minor:rgba(34,34,34,.10); --grid-major:rgba(34,34,34,.18); --axis-zero:rgba(34,34,34,.22);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Arial, Helvetica, sans-serif;color:var(--ink);background:var(--bg)}
+  .app{max-width:1820px;margin:0 auto;padding:16px 20px 28px}
+  .hero,.panel{background:var(--card);border:1px solid var(--line);box-shadow:0 10px 26px rgba(0,0,0,.06);border-radius:18px}
+  .hero{padding:22px 24px;margin-bottom:18px}
+  .title{margin:0 0 8px;color:var(--accent);font-size:30px;font-weight:800;letter-spacing:.2px}
+  .sub{color:#444;line-height:1.5;max-width:1120px;font-size:15px}
+  .hero .tabs{margin-top:18px}
+  .hero .title{max-width:900px}
+  .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:16px}
+  .tabBtn{border:1px solid var(--line);background:#fff;color:#333;padding:10px 16px;font-weight:800;cursor:pointer;border-radius:999px}
+  .tabBtn.active{background:var(--accent);border-color:var(--accent);color:#fff}
+  .layout{display:grid;grid-template-columns:minmax(320px,360px) minmax(0,1fr);gap:18px;align-items:start}
+  .layout > .panel:first-child{position:sticky;top:14px;max-height:calc(100vh - 28px);overflow:auto}
+  .panelHead{padding:14px 16px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  .panelHead h2{margin:0;color:var(--accent);font-size:19px;font-weight:800;text-transform:uppercase;letter-spacing:.3px}
+  .panelBody{padding:16px}
+  .controls{display:grid;gap:12px}
+  .group{border:1px solid var(--line);background:var(--panel);padding:13px;border-radius:14px}
+  .groupTitle{margin:0 0 10px;color:var(--accent);font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.35px}
+  .lab{font-size:13px;color:#444;margin-bottom:4px;font-weight:700}
+  .row{display:grid;grid-template-columns:1fr 96px;gap:10px;align-items:center;margin-bottom:10px}
+  .row:last-child{margin-bottom:0}
+  input[type=text],input[type=number],select{
+    width:100%;padding:8px 9px;border:1px solid #cfcfcf;background:#fff;font-size:13px
+  }
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button.small, .toolbar button{
+    border:1px solid #cfcfcf;background:#fff;padding:8px 10px;font-weight:700;cursor:pointer
+  }
+  button.small.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .stack{display:grid;gap:18px;min-width:0}
+  .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+  .four{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+  .lcGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));gap:18px}
+  .panelToggle{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);font-weight:700;white-space:nowrap}
+  .panelToggle input{accent-color:var(--accent)}
+  .eyeBtn,.toolbarBtn{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 10px;font-weight:700;cursor:pointer;border-radius:8px}
+  .eyeBtn{min-width:52px}
+  .eyeBtn.off{opacity:.65}
+  .visBar{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .visBar .sp{flex:1 1 auto}
+  .canvasWrap{padding:12px}
+  canvas{width:100%;display:block;background:#fff;border:1px solid var(--line);border-radius:12px}
+  .caption{margin-top:8px;font-size:12px;line-height:1.45;color:var(--muted)}
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .metric{border:1px solid var(--line);background:#fff;padding:12px 12px 10px;border-radius:14px;min-height:78px}
+  .metric .k{font-size:11px;color:#666;text-transform:uppercase;font-weight:700;letter-spacing:.3px}
+  .metric .v{margin-top:6px;font-size:22px;font-weight:800;line-height:1.1}
+  .hidden{display:none}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:#444}
+  .sw{display:inline-flex;align-items:center;gap:6px}
+  .sw i{display:inline-block;width:12px;height:12px}
+  .note{font-size:12px;line-height:1.45;color:#555}
+  .toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .toolbar span{font-size:12px;color:#666;align-self:center}
+  @media (max-width:1400px){
+    .layout{grid-template-columns:minmax(300px,330px) minmax(0,1fr)}
+    .lcGrid{grid-template-columns:repeat(auto-fit,minmax(360px,1fr))}
+  }
+  @media (max-width:1200px){
+    .layout,.two,.four,.metrics{grid-template-columns:1fr}
+    .layout > .panel:first-child{position:static;max-height:none;overflow:visible}
+    .lcGrid{grid-template-columns:1fr}
+  }
+
+  body.theme-dark{
+    --bg:#15171a; --card:#1e2228; --panel:#242931; --canvas:#151a20; --ink:#f4f7fb; --muted:#d6deea; --soft:#e6edf7; --line:#47505e; --field:#12151a; --field-border:#586273;
+    --accent:#ff7a6f; --blue:#8eb4ff; --green:#7be3a5; --orange:#ffc57d; --purple:#c2a2ff;
+    --grid-minor:rgba(244,247,251,.12); --grid-major:rgba(244,247,251,.24); --axis-zero:rgba(244,247,251,.30);
+  }
+  body.theme-grey{
+    --bg:#d8dadd; --card:#eef1f4; --panel:#e5e8ec; --canvas:#f7f8fa; --ink:#1f2730; --muted:#4f5b67; --soft:#33404d; --line:#adb5bf; --field:#ffffff; --field-border:#aeb7c1;
+    --accent:#c6463c; --blue:#365fdc; --green:#257d51; --orange:#b86f0d; --purple:#7649c8;
+    --grid-minor:rgba(31,39,48,.10); --grid-major:rgba(31,39,48,.18); --axis-zero:rgba(31,39,48,.24);
+  }
+  input[type=text],input[type=number],select,button.small,.toolbar button,.tabBtn,.metric,canvas{transition:background-color .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease}
+  input[type=text],input[type=number],select{background:var(--field);color:var(--ink);border-color:var(--field-border)}
+  .sub,.lab,.legend,.note,.toolbar span,.metric .k,.panelHead span,.hero label{color:var(--muted) !important}
+  .tabBtn{background:var(--field);color:var(--ink);border-color:var(--line)}
+  button.small, .toolbar button, .metric{background:var(--field);color:var(--ink);border-color:var(--field-border)}
+  canvas{background:var(--canvas)}
+  #themeSelect{background:var(--field) !important;color:var(--ink) !important;border-color:var(--field-border) !important}
+  body.theme-dark .tabBtn{background:#232830;color:var(--ink);border-color:#586273}
+  body.theme-dark .tabBtn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+
+  .helpBtn{border:1px solid var(--field-border);background:var(--field);color:var(--ink);padding:8px 12px;font-weight:800;cursor:pointer;border-radius:999px}
+  .helpModal{position:fixed;inset:0;background:rgba(15,18,24,.56);display:none;align-items:center;justify-content:center;padding:22px;z-index:2000;backdrop-filter:blur(4px)}
+  .helpModal.show{display:flex}
+  .helpCard{width:min(680px,100%);background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.22);overflow:hidden}
+  .helpCardHead{padding:18px 20px 12px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+  .helpCardHead h2{margin:0;color:var(--accent);font-size:24px;font-weight:800}
+  .helpClose{border:1px solid var(--field-border);background:var(--field);color:var(--ink);width:38px;height:38px;border-radius:999px;cursor:pointer;font-size:18px;font-weight:800}
+  .helpCardBody{padding:18px 20px 20px}
+  .helpLead{margin:0 0 14px;color:var(--muted);line-height:1.55;font-size:14px}
+  .helpGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:12px 0 16px}
+  .helpItem{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:12px}
+  .helpItem h3{margin:0 0 6px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.35px}
+  .helpItem p{margin:0;color:var(--muted);font-size:13px;line-height:1.5}
+  .helpActions{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px}
+  .helpCheck{display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);font-weight:700}
+  .helpCheck input{accent-color:var(--accent)}
+  .helpStart{border:1px solid var(--accent);background:var(--accent);color:#fff;padding:10px 16px;border-radius:999px;font-weight:800;cursor:pointer}
+  @media (max-width:700px){.helpGrid{grid-template-columns:1fr}.helpCardHead h2{font-size:21px}}
+
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="hero">
+    <h1 class="title">Communications Visualizer</h1>
+    <div class="sub">
+      This version adds mouse-wheel zoom and click-drag panning, theoretical null markers, unipolar and bipolar NRZ,
+      smoother spectrum curves with peak/null behavior, digital-envelope spectrum for QAM/QPSK, and a refresh button that generates a new waveform/bit pattern.
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-weight:700;color:#444">Theme</label><select id="themeSelect" style="padding:8px 10px;border:1px solid #cfcfcf;background:#fff;font-size:13px;width:auto"><option value="light">Light</option><option value="dark">Dark</option><option value="grey">Grey</option></select><button class="helpBtn" id="openHelpBtn" type="button">Help</button></div><div class="tabs">
+      <button class="tabBtn active" data-tab="lineCoding">Line Coding Comparison</button>
+      <button class="tabBtn" data-tab="modulation">Modulation Visualizer</button>
+    </div>
+  </section>
+
+  <div id="lineCoding" class="tabPage">
+    <section class="layout">
+      <div class="panel">
+        <div class="panelHead"><h2>Controls</h2><span style="font-size:12px;color:#666">Unipolar · Polar · Bipolar (AMI) · RZ · Manchester</span></div>
+        <div class="panelBody controls">
+          <div class="group">
+            <div class="groupTitle">Bit stream</div>
+            <div style="margin-bottom:10px;display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:end">
+              <div><div class="lab">Binary sequence</div><input id="lc_bits" type="text" value="1101001110010110"></div>
+              <div><div class="lab">Bit length</div><select id="lc_bitlen"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16" selected>16-bit</option><option value="32">32-bit</option><option value="48">48-bit</option></select></div>
+            </div>
+            <div class="btns">
+              <button class="small primary" id="lc_random">Refresh / Random bits</button>
+              <button class="small" id="lc_alt">Alternating</button>
+              <button class="small" id="lc_pulse">Single pulse</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Signal settings</div>
+            <div class="row"><div><div class="lab">Bit / clock frequency (Hz)</div><input id="lc_br" type="range" min="100" max="5000" step="50" value="1000"></div><input id="lc_brn" type="number" min="100" max="5000" step="50" value="1000"></div>
+            <div class="row"><div><div class="lab">Amplitude (V)</div><input id="lc_amp" type="range" min="0.5" max="5" step="0.1" value="1"></div><input id="lc_ampn" type="number" min="0.5" max="5" step="0.1" value="1"></div>
+            <div class="row"><div><div class="lab">RZ duty cycle (%)</div><input id="lc_duty" type="range" min="20" max="80" step="1" value="50"></div><input id="lc_dutyn" type="number" min="20" max="80" step="1" value="50"></div>
+            <div class="row"><div><div class="lab">Edge smoothing</div><input id="lc_smooth" type="range" min="0" max="0.35" step="0.01" value="0.08"></div><input id="lc_smoothn" type="number" min="0" max="0.35" step="0.01" value="0.08"></div>
+            <div class="row"><div><div class="lab">PSD FFT points</div><input id="lc_fftN" type="range" min="512" max="4096" step="512" value="2048"></div><input id="lc_fftNn" type="number" min="512" max="4096" step="512" value="2048"></div>
+            <div style="margin-top:10px"><div class="lab">Spectrum view</div>
+              <select id="lc_specView">
+                <option>Real spectrum</option>
+                <option>Average</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Measurement Tool</div>
+            <div style="margin-bottom:10px"><div class="lab">Cursor display</div>
+              <select id="lc_measureToggle">
+                <option value="off" selected>Off</option>
+                <option value="on">On</option>
+              </select>
+            </div>
+            <div class="note">Turn this on when you want oscilloscope-style X and Y cursors on the line-coding waveforms and spectra.</div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Display help</div>
+            <div class="note">
+              Use the mouse wheel over a plot to zoom. Click and drag left/right to pan.
+              Red dashed lines are theoretical first spectral-null markers.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="stack focusSection">
+        <div class="sectionLabel"><h3>Overview</h3><span class="mini">Key values and visibility first</span></div>
+        <div class="metrics">
+          <div class="metric"><div class="k">Bit rate</div><div class="v" id="lc_mBr">1000 bps</div></div>
+          <div class="metric"><div class="k">Bit time</div><div class="v" id="lc_mTb">1.000 ms</div></div>
+          <div class="metric"><div class="k">Samples / bit</div><div class="v" id="lc_mSpb">80</div></div>
+          <div class="metric"><div class="k">Visible time span</div><div class="v" id="lc_mSpan">—</div></div>
+          <div class="metric"><div class="k">Nominal BW</div><div class="v" id="lc_mNom">—</div></div>
+          <div class="metric"><div class="k">Nyquist BW</div><div class="v" id="lc_mNyq">—</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHead"><h2>Graph Visibility</h2><div class="visBar">
+            <button class="toolbarBtn" id="lc_showAllBtn" type="button">👁 Show all</button>
+            <button class="toolbarBtn" id="lc_hideAllBtn" type="button">🙈 Hide all</button>
+          </div></div>
+          <div class="panelBody">
+            <div class="visBar">
+              <button class="eyeBtn" type="button" data-code="UNRZ" id="lc_eyeUNRZ">👁 Unipolar NRZ</button>
+              <button class="eyeBtn" type="button" data-code="PNRZ" id="lc_eyePNRZ">👁 Polar NRZ</button>
+              <button class="eyeBtn" type="button" data-code="RZ" id="lc_eyeRZ">👁 RZ</button>
+              <button class="eyeBtn" type="button" data-code="BAMI" id="lc_eyeBAMI">👁 Bipolar AMI</button>
+              <button class="eyeBtn" type="button" data-code="MAN" id="lc_eyeMAN">👁 Manchester</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sectionLabel"><h3>Line-code waveforms</h3><span class="mini">Each scheme gets its own time-domain view</span></div>
+        <div class="lcGrid" id="lc_timeGrid">
+          <div class="panel lc-graph-panel" id="lc_panelUNRZ_time">
+            <div class="panelHead"><h2>Unipolar NRZ</h2><div style="display:flex;align-items:center;gap:14px"><button class="eyeBtn" type="button" data-code="UNRZ" id="lc_panelBtn_UNRZ_time">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_timeUNRZ" width="520" height="220"></canvas><div class="caption">1 = +A, 0 = 0 V.</div></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelPNRZ_time">
+            <div class="panelHead"><h2>Polar NRZ</h2><div style="display:flex;align-items:center;gap:14px"><button class="eyeBtn" type="button" data-code="PNRZ" id="lc_panelBtn_PNRZ_time">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_timePNRZ" width="520" height="220"></canvas><div class="caption">1 = +A, 0 = −A.</div></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelRZ_time">
+            <div class="panelHead"><h2>RZ</h2><div style="display:flex;align-items:center;gap:14px"><button class="eyeBtn" type="button" data-code="RZ" id="lc_panelBtn_RZ_time">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_timeRZ" width="520" height="220"></canvas><div class="caption">Pulse returns to zero inside each bit.</div></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelBAMI_time">
+            <div class="panelHead"><h2>Bipolar AMI</h2><div style="display:flex;align-items:center;gap:14px"><button class="eyeBtn" type="button" data-code="BAMI" id="lc_panelBtn_BAMI_time">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_timeBAMI" width="520" height="220"></canvas><div class="caption">1s alternate between +A and −A, while 0 = 0 V.</div></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelMAN_time">
+            <div class="panelHead"><h2>Manchester</h2><div style="display:flex;align-items:center;gap:14px"><button class="eyeBtn" type="button" data-code="MAN" id="lc_panelBtn_MAN_time">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_timeMAN" width="520" height="220"></canvas><div class="caption">Mid-bit transition provides timing information.</div></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHead"><h2>Time-domain navigation</h2><span style="font-size:12px;color:#666" id="lc_timeInfo">wheel zoom + drag pan</span></div>
+          <div class="panelBody"><div class="note">Any line-code waveform plot can be zoomed or panned. The same time-view window is applied to all line-code waveforms so they stay aligned.</div></div>
+        </div>
+
+        <div class="sectionLabel"><h3>Line-code spectra</h3><span class="mini">Shared navigation makes comparison easier</span></div>
+        <div class="lcGrid" id="lc_specGrid">
+          <div class="panel lc-graph-panel" id="lc_panelUNRZ_spec">
+            <div class="panelHead"><h2>Unipolar NRZ Spectrum</h2><div style="display:flex;align-items:center;gap:14px"><span style="font-size:12px;color:#666">PSD with null marker</span><button class="eyeBtn" type="button" data-code="UNRZ" id="lc_panelBtn_UNRZ_spec">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_fftUNRZ" width="520" height="260"></canvas></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelPNRZ_spec">
+            <div class="panelHead"><h2>Polar NRZ Spectrum</h2><div style="display:flex;align-items:center;gap:14px"><span style="font-size:12px;color:#666">PSD with null marker</span><button class="eyeBtn" type="button" data-code="PNRZ" id="lc_panelBtn_PNRZ_spec">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_fftPNRZ" width="520" height="260"></canvas></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelRZ_spec">
+            <div class="panelHead"><h2>RZ Spectrum</h2><div style="display:flex;align-items:center;gap:14px"><span style="font-size:12px;color:#666">PSD with null marker</span><button class="eyeBtn" type="button" data-code="RZ" id="lc_panelBtn_RZ_spec">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_fftRZ" width="520" height="260"></canvas></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelBAMI_spec">
+            <div class="panelHead"><h2>Bipolar AMI Spectrum</h2><div style="display:flex;align-items:center;gap:14px"><span style="font-size:12px;color:#666">PSD with null marker</span><button class="eyeBtn" type="button" data-code="BAMI" id="lc_panelBtn_BAMI_spec">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_fftBAMI" width="520" height="260"></canvas></div>
+          </div>
+          <div class="panel lc-graph-panel" id="lc_panelMAN_spec">
+            <div class="panelHead"><h2>Manchester Spectrum</h2><div style="display:flex;align-items:center;gap:14px"><span style="font-size:12px;color:#666">PSD with null marker</span><button class="eyeBtn" type="button" data-code="MAN" id="lc_panelBtn_MAN_spec">👁</button></div></div>
+            <div class="canvasWrap"><canvas id="lc_fftMAN" width="520" height="260"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panelHead"><h2>Frequency-domain navigation</h2><span style="font-size:12px;color:#666" id="lc_freqInfo">wheel zoom + drag pan</span></div>
+          <div class="panelBody"><div class="note">The frequency-view window is shared by all four spectra so peaks, lobes, and theoretical nulls stay easy to compare.</div></div>
+        </div>
+        <div class="panel">
+          <div class="panelHead"><h2>Line-code bandwidth calculator</h2><span style="font-size:12px;color:#666">Bandwidth formulas</span></div>
+          <div class="panelBody">
+            <div class="two">
+              <div class="group">
+                <div class="groupTitle">Calculator inputs</div>
+                <div style="margin-bottom:10px"><div class="lab">Line code</div>
+                  <select id="lc_calcCode">
+                    <option value="NRZ">NRZ / Polar NRZ</option>
+                    <option value="BAMI">Bipolar AMI</option>
+                    <option value="RZ">RZ</option>
+                    <option value="Manchester">Manchester</option>
+                  </select>
+                </div>
+                <div style="margin-bottom:10px"><div class="lab">Known value</div>
+                  <select id="lc_calcKnown">
+                    <option value="br">Bit rate / frequency</option>
+                    <option value="tb">Bit time</option>
+                    <option value="tau">Pulse width τ</option>
+                    <option value="bwNom">Nominal BW</option>
+                    <option value="bwNyq">Nyquist BW</option>
+                  </select>
+                </div>
+                <div class="row"><div><div class="lab">Value</div><input id="lc_calcValue" type="range" min="100" max="5000" step="10" value="1000"></div><input id="lc_calcValuen" type="number" step="0.000001" value="1000"></div>
+                <div class="note">Use one known value and the calculator fills in the rest with <strong>BW<sub>nom</sub> = 1/τ</strong> and <strong>BW<sub>nyq</sub> = 1/(2τ)</strong>. For NRZ, τ = T<sub>b</sub>. For RZ and Manchester, τ ≈ T<sub>b</sub>/2.</div>
+              </div>
+              <div class="group">
+                <div class="groupTitle">Calculated results</div>
+                <div class="metrics" style="grid-template-columns:repeat(2,1fr)">
+                  <div class="metric"><div class="k">Bit rate</div><div class="v" id="lc_calcBr">—</div></div>
+                  <div class="metric"><div class="k">Bit time</div><div class="v" id="lc_calcTb">—</div></div>
+                  <div class="metric"><div class="k">Pulse width τ</div><div class="v" id="lc_calcTau">—</div></div>
+                  <div class="metric"><div class="k">Nominal BW</div><div class="v" id="lc_calcNom">—</div></div>
+                  <div class="metric"><div class="k">Nyquist BW</div><div class="v" id="lc_calcNyq">—</div></div>
+                  <div class="metric"><div class="k">1st null</div><div class="v" id="lc_calcNull">—</div></div>
+                </div>
+                <div class="caption" id="lc_calcExplain" style="margin-top:10px"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="modulation" class="tabPage hidden">
+    <section class="layout">
+      <div class="panel">
+        <div class="panelHead"><h2>Controls</h2><span style="font-size:12px;color:#666">ASK · FSK · PSK · Higher-QAM</span></div>
+        <div class="panelBody controls">
+          <div class="group">
+            <div class="groupTitle">Data & mode</div>
+            <div style="margin-bottom:10px;display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:end"><div><div class="lab">Bit sequence</div><input id="md_bits" type="text" value="11010011100101101101001110010110"></div><div><div class="lab">Bit length</div><select id="md_bitlen"><option value="4">4-bit</option><option value="8">8-bit</option><option value="16" selected>16-bit</option><option value="32">32-bit</option><option value="64">64-bit</option><option value="128">128-bit</option></select></div></div>
+            <div style="margin-bottom:10px"><div class="lab">Modulation type</div>
+              <select id="md_mode">
+                <option>ASK</option>
+                <option>FSK</option>
+                <option>BPSK</option>
+                <option>QPSK (4-QAM)</option>
+                <option>16-QAM</option>
+                <option>64-QAM</option>
+                <option>256-QAM</option>
+              </select>
+            </div>
+            <div style="margin-bottom:10px"><div class="lab">Spectrum type</div>
+              <select id="md_specType">
+                <option>Auto</option>
+                <option>RF waveform</option>
+                <option>Digital envelope</option>
+              </select>
+            </div>
+            <div style="margin-bottom:10px"><div class="lab">Spectrum domain view</div>
+              <select id="md_domainView">
+                <option>Auto</option>
+                <option>Baseband</option>
+                <option>RF</option>
+              </select>
+            </div>
+            <div class="btns">
+              <button class="small primary" id="md_random">Refresh / Random waveform</button>
+              <button class="small" id="md_clean">Low-noise preset</button>
+              <button class="small" id="md_harsh">Harsh channel</button>
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Signal settings</div>
+            <div class="row"><div><div class="lab">Carrier frequency (Hz)</div><input id="md_fc" type="range" min="2000" max="20000" step="100" value="6000"></div><input id="md_fcn" type="number" min="2000" max="20000" step="100" value="6000"></div>
+            <div class="row"><div><div class="lab">Symbol rate (sym/s)</div><input id="md_rs" type="range" min="200" max="3000" step="50" value="1000"></div><input id="md_rsn" type="number" min="200" max="3000" step="50" value="1000"></div>
+            <div class="row"><div><div class="lab">Carrier amplitude</div><input id="md_amp" type="range" min="0.5" max="3" step="0.1" value="1"></div><input id="md_ampn" type="number" min="0.5" max="3" step="0.1" value="1"></div>
+            <div class="row"><div><div class="lab">Samples / symbol</div><input id="md_sps" type="range" min="40" max="160" step="10" value="80"></div><input id="md_spsn" type="number" min="40" max="160" step="10" value="80"></div>
+            <div class="row"><div><div class="lab">PSD FFT points</div><input id="md_fftN" type="range" min="512" max="4096" step="512" value="2048"></div><input id="md_fftNn" type="number" min="512" max="4096" step="512" value="2048"></div>
+            <div class="row"><div><div class="lab">SNR (dB)</div><input id="md_snr" type="range" min="0" max="40" step="1" value="22"></div><input id="md_snrn" type="number" min="0" max="40" step="1" value="22"></div>
+            <div style="margin-top:10px"><div class="lab">Channel noise</div>
+              <select id="md_noiseMode">
+                <option value="on" selected>On</option>
+                <option value="off">Off</option>
+              </select>
+            </div>
+            <div style="margin-top:10px"><div class="lab">Spectrum trace</div>
+              <select id="md_waveView">
+                <option selected>Real spectrum</option>
+                <option>Average</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="group" id="askGroup">
+            <div class="groupTitle">ASK controls</div>
+            <div class="row"><div><div class="lab">ASK frequency (Hz)</div><input id="md_askFreq" type="range" min="1000" max="20000" step="100" value="6000"></div><input id="md_askFreqn" type="number" min="1000" max="20000" step="100" value="6000"></div>
+            <div class="row"><div><div class="lab">ASK amplitude for bit 1</div><input id="md_askAmp1" type="range" min="0.2" max="3" step="0.1" value="1.0"></div><input id="md_askAmp1n" type="number" min="0.2" max="3" step="0.1" value="1.0"></div>
+            <div class="row"><div><div class="lab">ASK amplitude for bit 0</div><input id="md_askAmp0" type="range" min="0" max="3" step="0.1" value="0.25"></div><input id="md_askAmp0n" type="number" min="0" max="3" step="0.1" value="0.25"></div>
+          </div>
+
+          <div class="group hidden" id="fskGroup">
+            <div class="groupTitle">FSK controls</div>
+            <div class="row"><div><div class="lab">FSK frequency for bit 0 (Hz)</div><input id="md_fskF0" type="range" min="1000" max="20000" step="100" value="5000"></div><input id="md_fskF0n" type="number" min="1000" max="20000" step="100" value="5000"></div>
+            <div class="row"><div><div class="lab">FSK frequency for bit 1 (Hz)</div><input id="md_fskF1" type="range" min="1000" max="20000" step="100" value="7000"></div><input id="md_fskF1n" type="number" min="1000" max="20000" step="100" value="7000"></div>
+          </div>
+
+          <div class="group hidden" id="pskGroup">
+            <div class="groupTitle">PSK controls</div>
+            <div class="row"><div><div class="lab">PSK phase for bit 0 (deg)</div><input id="md_pskP0" type="range" min="-180" max="180" step="5" value="180"></div><input id="md_pskP0n" type="number" min="-180" max="180" step="5" value="180"></div>
+            <div class="row"><div><div class="lab">PSK phase for bit 1 (deg)</div><input id="md_pskP1" type="range" min="-180" max="180" step="5" value="0"></div><input id="md_pskP1n" type="number" min="-180" max="180" step="5" value="0"></div>
+          </div>
+
+          <div class="group hidden" id="qamGroup">
+            <div class="groupTitle">QAM constellation controls</div>
+            <div class="row"><div><div class="lab">QAM carrier frequency (Hz)</div><input id="md_qamFc" type="range" min="2000" max="20000" step="100" value="6000"></div><input id="md_qamFcn" type="number" min="2000" max="20000" step="100" value="6000"></div>
+            <div class="row"><div><div class="lab">Constellation error spread</div><input id="md_qamErr" type="range" min="0" max="1" step="0.01" value="0"></div><input id="md_qamErrn" type="number" min="0" max="1" step="0.01" value="0"></div>
+            <div class="note" style="margin-top:8px">
+              0 = perfect constellation points. Higher values move the orange constellation dots randomly around the ideal QAM grid.
+            </div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Measurement Tool</div>
+            <div style="margin-bottom:10px"><div class="lab">Cursor display</div>
+              <select id="md_measureToggle">
+                <option value="off" selected>Off</option>
+                <option value="on">On</option>
+              </select>
+            </div>
+            <div class="note">Turn this on only when you want oscilloscope-style X and Y cursors on the modulation plots.</div>
+          </div>
+
+          <div class="group">
+            <div class="groupTitle">Help</div>
+            <div class="note">
+              Use the mouse wheel to zoom and click-drag to pan in the waveform and spectrum plots. Spectrum trace can show the real PSD curve or an averaged version that looks smoother and less zigzag. Channel noise can be turned fully off for a clean waveform. In Auto mode, the modulation spectrum now defaults to the RF view so QAM still shows its carrier frequency. Baseband view centers the spectrum at 0 Hz, while RF view centers it around the carrier.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stack">
+        <div class="metrics">
+          <div class="metric"><div class="k">Mode</div><div class="v" id="md_mMode">ASK</div></div>
+          <div class="metric"><div class="k">Bit rate</div><div class="v" id="md_mBr">1000 bps</div></div>
+          <div class="metric"><div class="k">Bits / symbol</div><div class="v" id="md_mBps">1</div></div>
+          <div class="metric"><div class="k">Peak</div><div class="v" id="md_mPeak">—</div></div><div class="metric"><div class="k">RMS</div><div class="v" id="md_mRms">—</div></div><div class="metric"><div class="k">Error rate</div><div class="v" id="md_mBer">—</div></div>
+        </div>
+
+        <div class="sectionLabel"><h3>Main plots</h3><span class="mini">Primary analysis area</span></div>
+        <div class="mainPlots">
+          <div class="panel">
+            <div class="panelHead"><h2>Time-domain waveform</h2><span style="font-size:12px;color:#666" id="md_timeInfo">wheel zoom + drag pan</span></div>
+            <div class="canvasWrap"><canvas id="md_time" width="720" height="260"></canvas><div class="caption">X-axis: time (s). Y-axis: amplitude. Turn the measurement tool on when you want draggable X and Y cursors like an oscilloscope.</div></div>
+          </div>
+          <div class="panel">
+            <div class="panelHead"><h2>Spectrum</h2><span style="font-size:12px;color:#666" id="md_freqInfo">wheel zoom + drag pan</span></div>
+            <div class="canvasWrap"><canvas id="md_spec" width="720" height="260"></canvas><div class="caption">X-axis: frequency (Hz). Y-axis: power spectral density (dB, normalized). RF view stays mirrored for real passband signals, while complex baseband shows the true two-sided I/Q spectrum. Turn the measurement tool on when you want draggable X and Y cursors like an oscilloscope.</div></div>
+          </div>
+        </div>
+
+        <div class="sectionLabel"><h3>Support views</h3><span class="mini">Explanation and I-Q reference</span></div>
+        <div class="modSecondary">
+          <div class="panel">
+            <div class="panelHead"><h2>Live explanation</h2><span style="font-size:12px;color:#666">Current bit sequence and notes</span></div>
+            <div class="panelBody">
+              <div class="legend">
+                <span class="sw"><i style="background:var(--blue)"></i>Waveform</span>
+                <span class="sw"><i style="background:var(--green)"></i>Spectrum</span>
+                <span class="sw"><i style="background:var(--orange)"></i>Constellation</span>
+              </div>
+              <div class="note" style="margin-top:10px"><strong>Current bit sequence:</strong> <span id="md_bitsShown"></span></div>
+              <div class="caption" id="md_modeText" style="margin-top:12px"></div>
+            </div>
+          </div>
+          <div class="panel" id="md_constPanel">
+            <div class="panelHead"><h2>I-Q Quadrant View</h2><span style="font-size:12px;color:#666" id="md_constInfo">Ideal and received QAM points</span></div>
+            <div class="canvasWrap"><canvas id="md_const" width="720" height="260"></canvas><div class="caption">For QPSK and QAM, the orange dots show the displayed constellation. Move your cursor over a dot to see its bit label.</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</div>
+
+
+<div class="helpModal" id="helpModal" aria-hidden="true">
+  <div class="helpCard" role="dialog" aria-modal="true" aria-labelledby="helpTitle">
+    <div class="helpCardHead">
+      <div>
+        <h2 id="helpTitle">Welcome to Communications Visualizer</h2>
+        <p class="helpLead">Use this quick guide the first time you open the tool. It explains what each section does and how to explore the plots.</p>
+      </div>
+      <button class="helpClose" id="closeHelpX" type="button" aria-label="Close help">×</button>
+    </div>
+    <div class="helpCardBody">
+      <div class="helpGrid">
+        <div class="helpItem">
+          <h3>Line coding</h3>
+          <p>Compare NRZ, RZ, Manchester, and AMI in both the time and frequency domains. Changing bit rate changes bit time and bandwidth.</p>
+        </div>
+        <div class="helpItem">
+          <h3>Modulation</h3>
+          <p>Switch between ASK, FSK, PSK, and QAM to see how carrier frequency, symbol rate, and noise affect waveform shape and spectrum.</p>
+        </div>
+        <div class="helpItem">
+          <h3>Graph controls</h3>
+          <p>Use the mouse wheel to zoom. Click and drag left or right to pan. Turn on the measurement tool when you want cursor readouts.</p>
+        </div>
+        <div class="helpItem">
+          <h3>Views</h3>
+          <p>RF view shows the real passband spectrum, while baseband view shows the underlying signal behavior used for I/Q-style analysis.</p>
+        </div>
+      </div>
+      <div class="helpActions">
+        <label class="helpCheck"><input type="checkbox" id="dontShowHelpAgain"> Don’t show this again</label>
+        <button class="helpStart" id="startUsingTool" type="button">Start exploring</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ---------- tabs ---------- */
+document.querySelectorAll('.tabBtn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.tabBtn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.tabPage').forEach(p=>p.classList.add('hidden'));
+    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+  });
+});
+
+/* ---------- helpers ---------- */
+function syncPair(rangeEl, numberEl, onSet){
+  const setVal = v => { rangeEl.value = v; numberEl.value = v; onSet(parseFloat(v)); };
+  rangeEl.addEventListener('input', e=>setVal(e.target.value));
+  numberEl.addEventListener('input', e=>setVal(e.target.value));
+}
+function gauss(){
+  let u=0,v=0;
+  while(u===0) u=Math.random();
+  while(v===0) v=Math.random();
+  return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);
+}
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+function smoothArray(data, passes=3){
+  let out = data.slice();
+  for(let p=0;p<passes;p++){
+    const prev = out.slice();
+    out = prev.map((v,i)=>((prev[i-1] ?? v) + v + (prev[i+1] ?? v))/3);
+  }
+  return out;
+}
+
+function movingAverage(data, windowSize){
+  const w = Math.max(1, Math.floor(windowSize));
+  if(w <= 1) return data.slice();
+  const out = new Array(data.length).fill(0);
+  let acc = 0;
+  for(let i=0;i<data.length;i++){
+    acc += data[i];
+    if(i >= w) acc -= data[i-w];
+    out[i] = acc / Math.min(i+1, w);
+  }
+  return out;
+}
+function movingAverageAbs(data, windowSize){
+  return movingAverage(data.map(v=>Math.abs(v)), windowSize);
+}
+function randomBits(n){
+  return Array.from({length:n},()=>Math.random()<0.5?'0':'1').join('');
+}
+function applyDbNorm(arr){
+  const maxV = Math.max(...arr, 1e-12);
+  return arr.map(v => 10*Math.log10(v/maxV + 1e-12));
+}
+function setupZoomPan(canvas, target, redraw){
+  let dragging = false, lastX = 0, mode = '';
+  canvas.addEventListener('wheel', e=>{
+    e.preventDefault();
+    const delta = e.deltaY < 0 ? 1/1.22 : 1.22;
+    if(target.kind === 'time'){
+      target.zoom = clamp(target.zoom * delta, 1, 30);
+    }else{
+      target.zoom = clamp(target.zoom * delta, 1, 30);
+    }
+    redraw();
+  }, {passive:false});
+  canvas.addEventListener('mousedown', e=>{
+    if(e.defaultPrevented) return;
+    dragging = true; lastX = e.clientX;
+  });
+  window.addEventListener('mouseup', ()=> dragging = false);
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const dx = e.clientX - lastX;
+    lastX = e.clientX;
+    target.pan = clamp(target.pan - dx / 600 / target.zoom * 4, 0, 1);
+    redraw();
+  });
+}
+function computePSDReal(signal, N){
+  const segN = N;
+  const step = Math.max(1, Math.floor(N/2));
+  const window = new Array(segN).fill(0).map((_,i)=>0.54 - 0.46*Math.cos(2*Math.PI*i/(segN-1)));
+  const psd = new Array(segN/2).fill(0);
+  const validSegments = Math.max(1, Math.floor((signal.length - segN)/step) + 1);
+  for(let s=0;s<validSegments;s++){
+    const start = s*step;
+    const seg = new Array(segN).fill(0);
+    for(let i=0;i<segN;i++) seg[i] = (signal[start+i] || 0) * window[i];
+    for(let k=0;k<segN/2;k++){
+      let sr=0, si=0;
+      for(let n=0;n<segN;n++){
+        const ang = -2*Math.PI*k*n/segN;
+        sr += seg[n]*Math.cos(ang);
+        si += seg[n]*Math.sin(ang);
+      }
+      psd[k] += (sr*sr + si*si)/segN;
+    }
+  }
+  for(let i=0;i<psd.length;i++) psd[i] /= validSegments;
+  return smoothArray(psd, 4);
+}
+function computePSDComplex(reSig, imSig, N){
+  const segN = N;
+  const step = Math.max(1, Math.floor(N/2));
+  const window = new Array(segN).fill(0).map((_,i)=>0.54 - 0.46*Math.cos(2*Math.PI*i/(segN-1)));
+  const psd = new Array(segN/2).fill(0);
+  const validSegments = Math.max(1, Math.floor((reSig.length - segN)/step) + 1);
+  for(let s=0;s<validSegments;s++){
+    const start = s*step;
+    for(let k=0;k<segN/2;k++){
+      let xr=0, xi=0;
+      for(let n=0;n<segN;n++){
+        const re = (reSig[start+n] || 0) * window[n];
+        const im = (imSig[start+n] || 0) * window[n];
+        const ang = -2*Math.PI*k*n/segN;
+        xr += re*Math.cos(ang) + im*Math.sin(ang);
+        xi += im*Math.cos(ang) - re*Math.sin(ang);
+      }
+      psd[k] += (xr*xr + xi*xi)/segN;
+    }
+  }
+  for(let i=0;i<psd.length;i++) psd[i] /= validSegments;
+  return smoothArray(psd, 4);
+}
+function computePSDComplexTwoSided(reSig, imSig, N){
+  const segN = N;
+  const step = Math.max(1, Math.floor(N/2));
+  const window = new Array(segN).fill(0).map((_,i)=>0.54 - 0.46*Math.cos(2*Math.PI*i/(segN-1)));
+  const psd = new Array(segN).fill(0);
+  const validSegments = Math.max(1, Math.floor((reSig.length - segN)/step) + 1);
+  for(let s=0;s<validSegments;s++){
+    const start = s*step;
+    const segRe = new Array(segN).fill(0);
+    const segIm = new Array(segN).fill(0);
+    for(let n=0;n<segN;n++){
+      segRe[n] = (reSig[start+n] || 0) * window[n];
+      segIm[n] = (imSig[start+n] || 0) * window[n];
+    }
+    for(let k=0;k<segN;k++){
+      let xr=0, xi=0;
+      for(let n=0;n<segN;n++){
+        const ang = -2*Math.PI*k*n/segN;
+        const c = Math.cos(ang), sng = Math.sin(ang);
+        xr += segRe[n]*c + segIm[n]*sng;
+        xi += segIm[n]*c - segRe[n]*sng;
+      }
+      const kShift = (k + segN/2) % segN;
+      psd[kShift] += (xr*xr + xi*xi)/segN;
+    }
+  }
+  for(let i=0;i<psd.length;i++) psd[i] /= validSegments;
+  return smoothArray(psd, 4);
+}
+function cssVar(name){
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+function themePalette(){
+  return {
+    ink: cssVar('--ink'),
+    muted: cssVar('--muted'),
+    soft: cssVar('--soft'),
+    line: cssVar('--line'),
+    canvas: cssVar('--canvas'),
+    accent: cssVar('--accent'),
+    blue: cssVar('--blue'),
+    green: cssVar('--green'),
+    orange: cssVar('--orange'),
+    purple: cssVar('--purple'),
+    gridMinor: cssVar('--grid-minor'),
+    gridMajor: cssVar('--grid-major'),
+    axisZero: cssVar('--axis-zero')
+  };
+}
+function baseGrid(ctx,w,h,pad,xLabel,yLabel){
+  const pal = themePalette();
+  ctx.clearRect(0,0,w,h);
+  ctx.fillStyle = pal.canvas;
+  ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle=pal.gridMinor;
+  ctx.lineWidth=1;
+  for(let i=0;i<=8;i++){
+    const x = pad + i*(w-2*pad)/8;
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,h-pad); ctx.stroke();
+  }
+  for(let i=0;i<=6;i++){
+    const y = pad + i*(h-2*pad)/6;
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke();
+  }
+  ctx.strokeStyle=pal.gridMajor;
+  ctx.strokeRect(pad,pad,w-2*pad,h-2*pad);
+  ctx.fillStyle=pal.muted;
+  ctx.font='12px Arial';
+  ctx.fillText(yLabel, 12, 14);
+  ctx.fillText(xLabel, w/2 - 28, h - 8);
+}
+
+
+function makeGroupsCollapsible(){
+  document.querySelectorAll('.controls .group').forEach((group, idx)=>{
+    const title = group.querySelector('.groupTitle');
+    if(!title || group.dataset.collapsibleReady==='1') return;
+    const content = document.createElement('div');
+    content.className = 'groupContent';
+    const nodes = Array.from(group.childNodes);
+    let move = false;
+    nodes.forEach(node=>{
+      if(node===title){ move = true; return; }
+      if(move) content.appendChild(node);
+    });
+    group.appendChild(content);
+    group.dataset.collapsibleReady='1';
+    const t = title.textContent.trim().toLowerCase();
+    const shouldCollapse = /help|display help|measurement tool|constellation controls/.test(t);
+    if(shouldCollapse) group.classList.add('collapsed');
+    title.setAttribute('role','button');
+    title.setAttribute('tabindex','0');
+    const toggle = ()=> group.classList.toggle('collapsed');
+    title.addEventListener('click', toggle);
+    title.addEventListener('keydown', e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); toggle(); }});
+  });
+}
+
+/* ---------- line coding state ---------- */
+const lc = {
+  bits:'1101001110010110', bitlen:16, br:1000, amp:1, duty:50, smooth:0.08, fftN:2048, specView:'Real spectrum', measureOn:false,
+  visible:{UNRZ:true, PNRZ:true, RZ:true, BAMI:true, MAN:true},
+  timeView:{kind:'time', zoom:1, pan:0}, freqView:{kind:'freq', zoom:1, pan:0}
+};
+const lcMeasure = {
+  time:{x:null,y:null,transform:null,drag:null},
+  spec:{x:null,y:null,transform:null,drag:null}
+};
+syncPair(lc_br, lc_brn, v=>{lc.br=v; drawLC();});
+syncPair(lc_amp, lc_ampn, v=>{lc.amp=v; drawLC();});
+syncPair(lc_duty, lc_dutyn, v=>{lc.duty=v; drawLC();});
+syncPair(lc_smooth, lc_smoothn, v=>{lc.smooth=v; drawLC();});
+syncPair(lc_fftN, lc_fftNn, v=>{lc.fftN=v; drawLC();});
+lc_specView.addEventListener('change', e=>{ lc.specView = e.target.value; drawLC(); });
+lc_measureToggle.addEventListener('change', e=>{ lc.measureOn = e.target.value === 'on'; drawLC(); });
+lc_bitlen.addEventListener('change', e=>{
+  lc.bitlen = parseInt(e.target.value, 10);
+  lc.bits = randomBits(lc.bitlen);
+  lc_bits.value = lc.bits;
+  drawLC();
+});
+lc_bits.addEventListener('input', e=>{
+  lc.bits = (e.target.value.replace(/[^01]/g,'') || '1010').slice(0,lc.bitlen);
+  e.target.value = lc.bits; drawLC();
+});
+lc_random.onclick = ()=>{ lc.bits = randomBits(lc.bitlen); lc_bits.value = lc.bits; drawLC(); };
+lc_alt.onclick = ()=>{ lc.bits = Array.from({length:lc.bitlen}, (_,i)=> i%2 ? '0':'1').join(''); lc_bits.value = lc.bits; drawLC(); };
+lc_pulse.onclick = ()=>{
+  const arr = Array.from({length:lc.bitlen}, ()=> '0');
+  arr[Math.floor(lc.bitlen/2)] = '1';
+  lc.bits = arr.join(''); lc_bits.value = lc.bits; drawLC();
+};
+syncPair(lc_calcValue, lc_calcValuen, v=>{ lcCalcSolve(); });
+lc_calcCode.addEventListener('change', lcCalcSolve);
+lc_calcKnown.addEventListener('change', ()=>{
+  const known = lc_calcKnown.value;
+  let min=1e-7, max=5e-3, step=1e-7, value=1/lc.br;
+  if(known==='br' || known==='bwNom' || known==='bwNyq'){
+    min=10; max=5e5; step=10; value=known==='bwNyq' ? lc.br/2 : lc.br;
+  }else if(known==='tau'){
+    value = lcTauForCode(lc_calcCode.value, lc.br);
+  }
+  lc_calcValue.min = min; lc_calcValue.max = max; lc_calcValue.step = step; lc_calcValue.value = value;
+  lc_calcValuen.step = step; lc_calcValuen.value = value;
+  lcCalcSolve();
+});
+
+function lcApplyVisibility(){
+  ['UNRZ','PNRZ','RZ','BAMI','MAN'].forEach(code=>{
+    const show = !!lc.visible[code];
+    const timePanel = document.getElementById(`lc_panel${code}_time`);
+    const specPanel = document.getElementById(`lc_panel${code}_spec`);
+    if(timePanel) timePanel.style.display = show ? '' : 'none';
+    if(specPanel) specPanel.style.display = show ? '' : 'none';
+    document.querySelectorAll(`#lc_timeGrid input[id="lc_show${code}"], #lc_specGrid input[id="lc_show${code}"]`).forEach(cb=>cb.checked = show);
+  });
+}
+['UNRZ','PNRZ','RZ','BAMI','MAN'].forEach(code=>{
+  document.querySelectorAll(`#lc_timeGrid input[id="lc_show${code}"], #lc_specGrid input[id="lc_show${code}"]`).forEach(el=>{
+    el.addEventListener('change', ()=>{
+      lc.visible[code] = el.checked;
+      lcApplyVisibility();
+      drawLC();
+    });
+  });
+});
+
+function lcBitAt(i){ return i>=0 && i<lc.bits.length ? (lc.bits[i]==='1'?1:0) : 0; }
+function lcWave(type){
+  const spb = 80, fs = lc.br * spb, total = lc.bits.length * spb, A = lc.amp;
+  const x = new Array(total).fill(0), duty = lc.duty / 100;
+  for(let n=0;n<total;n++){
+    const b = Math.floor(n/spb), u = (n-b*spb)/spb;
+    if(type==='UNRZ') x[n] = lcBitAt(b) ? A : 0;
+    else if(type==='PNRZ') x[n] = lcBitAt(b) ? A : -A;
+    else if(type==='RZ') x[n] = lcBitAt(b) ? (u<duty ? A : 0) : 0;
+    else if(type==='BAMI'){
+      let onesBefore = 0;
+      for(let i=0;i<b;i++) if(lcBitAt(i)) onesBefore++;
+      if(lcBitAt(b)) x[n] = (onesBefore % 2 === 0) ? A : -A;
+      else x[n] = 0;
+    }
+    else if(type==='MAN') x[n] = lcBitAt(b) ? (u<0.5 ? A : -A) : (u<0.5 ? -A : A);
+  }
+  const M = Math.max(1, Math.round(lc.smooth*spb));
+  if(M<=1) return {data:x, fs, spb};
+  const y = new Array(total).fill(0);
+  const w = new Array(2*M+1).fill(0).map((_,i)=>0.54 - 0.46*Math.cos(2*Math.PI*i/(2*M)));
+  const ws = w.reduce((a,b)=>a+b,0);
+  for(let n=0;n<total;n++){
+    let s=0;
+    for(let k=-M;k<=M;k++){
+      const idx = clamp(n+k,0,total-1);
+      s += x[idx]*w[k+M];
+    }
+    y[n]=s/ws;
+  }
+  return {data:y, fs, spb};
+}
+function lcFirstNull(type){
+  if(type==='UNRZ' || type==='PNRZ' || type==='BAMI') return lc.br;
+  if(type==='RZ') return lc.br / (lc.duty/100);
+  if(type==='MAN') return 2 * lc.br;
+  return lc.br;
+}
+function lcTauForCode(code, br){
+  if(code==='RZ' || code==='Manchester') return 0.5 / br;
+  return 1 / br;
+}
+function lcFormatHz(v){
+  if(!isFinite(v)) return '—';
+  if(Math.abs(v) >= 1e6) return (v/1e6).toFixed(3).replace(/\.?0+$/,'') + ' MHz';
+  if(Math.abs(v) >= 1e3) return (v/1e3).toFixed(3).replace(/\.?0+$/,'') + ' kHz';
+  return v.toFixed(3).replace(/\.?0+$/,'') + ' Hz';
+}
+function lcFormatTime(v){
+  if(!isFinite(v)) return '—';
+  if(Math.abs(v) < 1e-6) return (v*1e9).toFixed(3).replace(/\.?0+$/,'') + ' ns';
+  if(Math.abs(v) < 1e-3) return (v*1e6).toFixed(3).replace(/\.?0+$/,'') + ' µs';
+  return (v*1e3).toFixed(3).replace(/\.?0+$/,'') + ' ms';
+}
+function smoothPeaksKeepNulls(data, passes=2){
+  let out = data.slice();
+  for(let p=0;p<passes;p++){
+    const base = out.slice();
+    const avg = base.map((v,i)=>((base[i-1] ?? v) + v + (base[i+1] ?? v))/3);
+    out = base.map((v,i)=>{
+      const isNull = i>0 && i<base.length-1 && v < base[i-1] && v < base[i+1];
+      if(isNull) return v;
+      return Math.min(5, Math.max(-60, 0.82*avg[i] + 0.18*v));
+    });
+  }
+  return out;
+}
+function lcCalcSolve(){
+  const code = lc_calcCode.value;
+  const known = lc_calcKnown.value;
+  const raw = parseFloat(lc_calcValuen.value || lc_calcValue.value || 0);
+  let br = NaN, tb = NaN, tau = NaN, bwNom = NaN, bwNyq = NaN;
+  if(known==='br'){
+    br = raw; tb = 1/br; tau = lcTauForCode(code, br);
+  }else if(known==='tb'){
+    tb = raw; br = 1/tb; tau = lcTauForCode(code, br);
+  }else if(known==='tau'){
+    tau = raw; bwNom = 1/tau; bwNyq = 1/(2*tau);
+    br = (code==='RZ' || code==='Manchester') ? 1/(2*tau) : 1/tau; tb = 1/br;
+  }else if(known==='bwNom'){
+    bwNom = raw; tau = 1/bwNom; bwNyq = bwNom/2;
+    br = (code==='RZ' || code==='Manchester') ? bwNom/2 : bwNom; tb = 1/br;
+  }else if(known==='bwNyq'){
+    bwNyq = raw; tau = 1/(2*bwNyq); bwNom = 2*bwNyq;
+    br = (code==='RZ' || code==='Manchester') ? bwNyq : 2*bwNyq; tb = 1/br;
+  }
+  if(!isFinite(bwNom)) bwNom = 1/tau;
+  if(!isFinite(bwNyq)) bwNyq = 1/(2*tau);
+  const firstNull = bwNom;
+  lc_calcBr.textContent = lcFormatHz(br);
+  lc_calcTb.textContent = lcFormatTime(tb);
+  lc_calcTau.textContent = lcFormatTime(tau);
+  lc_calcNom.textContent = lcFormatHz(bwNom);
+  lc_calcNyq.textContent = lcFormatHz(bwNyq);
+  lc_calcNull.textContent = lcFormatHz(firstNull);
+  const tauText = (code==='RZ' || code==='Manchester') ? 'T<sub>b</sub>/2' : 'T<sub>b</sub>';
+  lc_calcExplain.innerHTML = `${code}: T<sub>b</sub> = 1 / f<sub>b</sub>, τ = ${tauText}, BW<sub>nom</sub> = 1/τ, BW<sub>nyq</sub> = 1/(2τ).`;
+}
+function drawLCTime(canvasId, obj, color){
+  const c=document.getElementById(canvasId), ctx=c.getContext('2d'), w=c.width, h=c.height, pad=44;
+  baseGrid(ctx,w,h,pad,'time (s)','voltage (V)');
+  const fullCount = obj.data.length;
+  const visible = clamp(Math.round(fullCount / lc.timeView.zoom), Math.max(2*obj.spb, 40), fullCount);
+  const maxStart = fullCount - visible;
+  const start = clamp(Math.round(lc.timeView.pan * maxStart), 0, maxStart);
+  const ymin = -1.35*lc.amp, ymax = 1.35*lc.amp;
+  const X = i => pad + i/(visible-1)*(w-2*pad);
+  const Y = v => h-pad - (v-ymin)/(ymax-ymin)*(h-2*pad);
+  const pal = themePalette();
+  const t0 = start/obj.fs, t1 = (start+visible-1)/obj.fs;
+  lcMeasure.time.transform = {pad,w,h,xmin:t0,xmax:t1,ymin,ymax};
+
+  const zeroY = Y(0);
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(pad, zeroY);
+  ctx.lineTo(w-pad, zeroY);
+  ctx.stroke();
+  ctx.fillStyle = pal.accent;
+  ctx.font = '11px Arial';
+  ctx.fillText('0 V', 10, zeroY + 4);
+
+  ctx.strokeStyle=color; ctx.lineWidth=2.8; ctx.beginPath();
+  for(let i=0;i<visible;i++){
+    const x=X(i), y=Y(obj.data[start+i]);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  ctx.strokeStyle=pal.gridMinor; ctx.fillStyle=pal.muted; ctx.font='11px Arial';
+  const bitStart = Math.floor(start/obj.spb), bitEnd = Math.ceil((start+visible)/obj.spb);
+  for(let b=bitStart;b<=bitEnd;b++){
+    const idx = b*obj.spb - start;
+    if(idx<0 || idx>visible-1) continue;
+    const x = X(idx);
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,h-pad); ctx.stroke();
+    if(b<lc.bits.length){
+      const center = X(Math.min(visible-1, idx + obj.spb/2));
+      ctx.fillText(lc.bits[b], center-3, pad+12);
+    }
+  }
+
+  for(let i=0;i<=4;i++){
+    const t = (start + i*(visible-1)/4) / obj.fs;
+    const x = pad + i*(w-2*pad)/4;
+    ctx.fillText(t.toExponential(1), x-12, h-18);
+  }
+  for(let i=0;i<=4;i++){
+    const v = ymax - i*(ymax-ymin)/4;
+    const y = Y(v);
+    ctx.fillText(v.toFixed(2), 6, y+4);
+  }
+
+  drawCursorOverlay(ctx, lcMeasure.time, pal, v => v.toExponential(2) + ' s', v => v.toFixed(2) + ' V', lc.measureOn);
+
+  lc_timeInfo.textContent = `Time window: ${t0.toExponential(2)} to ${t1.toExponential(2)} s`;
+  lc_mSpan.textContent = `${(t1-t0).toExponential(2)} s`;
+}
+function drawLCSpec(canvasId, psd, fs, firstNull, color){
+  const c=document.getElementById(canvasId), ctx=c.getContext('2d'), w=c.width,h=c.height,pad=42;
+  baseGrid(ctx,w,h,pad,'frequency (Hz)','power (dB)');
+  const dbRaw = applyDbNorm(psd);
+  const db = lc.specView === 'Average'
+    ? smoothPeaksKeepNulls(smoothArray(dbRaw, 6), 5)
+    : smoothArray(dbRaw, 3);
+  const fullFmax = Math.min(fs/2, 8*lc.br);
+  const visibleF = fullFmax / lc.freqView.zoom;
+  const maxStartF = Math.max(0, fullFmax - visibleF);
+  const f0 = lc.freqView.pan * maxStartF;
+  const f1 = f0 + visibleF;
+  const k0 = Math.floor(f0 * db.length / (fs/2));
+  const k1 = Math.max(k0+3, Math.floor(f1 * db.length / (fs/2)));
+  const slice = db.slice(k0,k1);
+  const ymin = -60, ymax = 5;
+  const X = i => pad + i/(slice.length-1)*(w-2*pad);
+  const Y = v => h-pad - (v-ymin)/(ymax-ymin)*(h-2*pad);
+  const pal = themePalette();
+  lcMeasure.spec.transform = {pad,w,h,xmin:f0,xmax:f1,ymin,ymax};
+
+  const zeroDbY = Y(0);
+  ctx.strokeStyle = pal.accent;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(pad, zeroDbY);
+  ctx.lineTo(w-pad, zeroDbY);
+  ctx.stroke();
+  ctx.fillStyle = pal.accent;
+  ctx.font = '11px Arial';
+  ctx.fillText('0 dB', 6, zeroDbY + 4);
+
+  ctx.strokeStyle=color; ctx.lineWidth=2.7; ctx.beginPath();
+  for(let i=0;i<slice.length;i++){
+    const x=X(i), y=Y(clamp(slice[i], ymin, ymax));
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+
+  if(firstNull>=f0 && firstNull<=f1){
+    const xNull = pad + ((firstNull-f0)/(f1-f0))*(w-2*pad);
+    ctx.strokeStyle=pal.accent; ctx.setLineDash([6,5]); ctx.beginPath(); ctx.moveTo(xNull,pad); ctx.lineTo(xNull,h-pad); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle=pal.accent; ctx.font='11px Arial'; ctx.fillText('1st null', Math.min(w-85, xNull+4), pad+12);
+  }
+  ctx.fillStyle=pal.muted; ctx.font='11px Arial';
+  for(let i=0;i<=5;i++){
+    const f = f0 + i*(f1-f0)/5;
+    const x = pad + i*(w-2*pad)/5;
+    ctx.fillText(f.toFixed(0), x-10, h-18);
+  }
+  for(let i=0;i<=6;i++){
+    const yv = ymax - i*(ymax-ymin)/6;
+    ctx.fillText(yv.toFixed(0), 8, Y(yv)+4);
+  }
+  drawCursorOverlay(ctx, lcMeasure.spec, pal, v => v.toFixed(1) + ' Hz', v => v.toFixed(1) + ' dB', lc.measureOn);
+  lc_freqInfo.textContent = `Frequency window: ${f0.toFixed(0)} to ${f1.toFixed(0)} Hz`;
+}
+function drawLC(){
+  lc_mBr.textContent = `${lc.br.toFixed(0)} Hz`;
+  lc_mTb.textContent = `${(1000/lc.br).toFixed(3)} ms`;
+  lc_mSpb.textContent = '80';
+  lc_mNom.textContent = lcFormatHz(lc.br);
+  lc_mNyq.textContent = lcFormatHz(lc.br/2);
+  lc_specView.value = lc.specView;
+  lc_bitlen.value = String(lc.bitlen);
+  lc_measureToggle.value = lc.measureOn ? 'on' : 'off';
+  lcApplyVisibility();
+
+  const unrz = lcWave('UNRZ'), pnrz = lcWave('PNRZ'), rz = lcWave('RZ'), bami = lcWave('BAMI'), man = lcWave('MAN');
+  const pu = computePSDReal(unrz.data, lc.fftN);
+  const pp = computePSDReal(pnrz.data, lc.fftN);
+  const pr = computePSDReal(rz.data, lc.fftN);
+  const pba = computePSDReal(bami.data, lc.fftN);
+  const pm = computePSDReal(man.data, lc.fftN);
+
+
+  const pal = themePalette();
+  drawLCTime('lc_timeUNRZ', unrz, pal.blue);
+  drawLCTime('lc_timePNRZ', pnrz, pal.purple);
+  drawLCTime('lc_timeRZ', rz, pal.green);
+  drawLCTime('lc_timeBAMI', bami, pal.orange);
+  drawLCTime('lc_timeMAN', man, pal.accent);
+
+  drawLCSpec('lc_fftUNRZ', pu, unrz.fs, lcFirstNull('UNRZ'), pal.blue);
+  drawLCSpec('lc_fftPNRZ', pp, pnrz.fs, lcFirstNull('PNRZ'), pal.purple);
+  drawLCSpec('lc_fftRZ', pr, rz.fs, lcFirstNull('RZ'), pal.green);
+  drawLCSpec('lc_fftBAMI', pba, bami.fs, lcFirstNull('BAMI'), pal.orange);
+  drawLCSpec('lc_fftMAN', pm, man.fs, lcFirstNull('MAN'), pal.accent);
+  const calcBr = parseFloat(lc_calcValuen.value || lc.br);
+  if(lc_calcKnown.value==='br' && isFinite(calcBr) && calcBr>0){
+    lc_calcValuen.value = calcBr; lc_calcValue.value = calcBr;
+  }
+  lcCalcSolve();
+  if(lc.measureOn){
+    lc_timeInfo.textContent += ' · cursors on';
+    lc_freqInfo.textContent += ' · cursors on';
+  }
+}
+
+/* ---------- modulation state ---------- */
+const md = {
+  bits:'11010011100101101101001110010110', mode:'ASK', specType:'Auto', domainView:'Auto', fc:6000, rs:1000, amp:1, sps:80, fftN:2048,
+  askFreq:6000, askAmp1:1.0, askAmp0:0.25, fskF0:5000, fskF1:7000, pskP0:180, pskP1:0, bitlen:16,
+  snr:22, qamErr:0, delay:0.35, mg:0.25, mphi:90,
+  baseTimeWindow:0.012, measureOn:false, waveView:'Real spectrum', noiseMode:'on',
+  timeView:{kind:'time', zoom:1, pan:0}, freqView:{kind:'freq', zoom:1, pan:0}
+};
+const mdConstHover = { items:[], active:null };
+const mdMeasure = {
+  time:{x:null,y:null,transform:null,drag:null},
+  spec:{x:null,y:null,transform:null,drag:null}
+};
+let mdLastSig = null;
+syncPair(md_fc, md_fcn, v=>{md.fc=v; drawMD();});
+syncPair(md_rs, md_rsn, v=>{md.rs=v; drawMD();});
+syncPair(md_amp, md_ampn, v=>{md.amp=v; drawMD();});
+syncPair(md_sps, md_spsn, v=>{md.sps=v; drawMD();});
+syncPair(md_fftN, md_fftNn, v=>{md.fftN=v; drawMD();});
+syncPair(md_askFreq, md_askFreqn, v=>{md.askFreq=v; drawMD();});
+syncPair(md_askAmp1, md_askAmp1n, v=>{md.askAmp1=v; drawMD();});
+syncPair(md_askAmp0, md_askAmp0n, v=>{md.askAmp0=v; drawMD();});
+syncPair(md_fskF0, md_fskF0n, v=>{md.fskF0=v; drawMD();});
+syncPair(md_fskF1, md_fskF1n, v=>{md.fskF1=v; drawMD();});
+syncPair(md_pskP0, md_pskP0n, v=>{md.pskP0=v; drawMD();});
+syncPair(md_pskP1, md_pskP1n, v=>{md.pskP1=v; drawMD();});
+syncPair(md_snr, md_snrn, v=>{md.snr=v; drawMD();});
+syncPair(md_qamErr, md_qamErrn, v=>{md.qamErr=v; drawMD();});
+syncPair(md_qamFc, md_qamFcn, v=>{md.fc=v; syncMD(); drawMD();});
+md_mode.addEventListener('change', e=>{md.mode=e.target.value; updateModeGroups(); drawMD();});
+md_specType.addEventListener('change', e=>{md.specType=e.target.value; drawMD();});
+md_domainView.addEventListener('change', e=>{md.domainView=e.target.value; drawMD();});
+md_measureToggle.addEventListener('change', e=>{ md.measureOn = e.target.value === 'on'; drawMD(); });
+md_waveView.addEventListener('change', e=>{ md.waveView = e.target.value; drawMD(); });
+md_noiseMode.addEventListener('change', e=>{ md.noiseMode = e.target.value; drawMD(); });
+md_bitlen.addEventListener('change', e=>{
+  md.bitlen = parseInt(e.target.value, 10);
+  md.bits = randomBits(md.bitlen);
+  md_bits.value = md.bits;
+  drawMD();
+});
+function updateModeGroups(){
+  askGroup.classList.add('hidden');
+  fskGroup.classList.add('hidden');
+  pskGroup.classList.add('hidden');
+  qamGroup.classList.add('hidden');
+  if(md.mode === 'ASK') askGroup.classList.remove('hidden');
+  else if(md.mode === 'FSK') fskGroup.classList.remove('hidden');
+  else if(md.mode === 'BPSK') pskGroup.classList.remove('hidden');
+  else qamGroup.classList.remove('hidden');
+}
+md_bits.addEventListener('input', e=>{
+  md.bits = (e.target.value.replace(/[^01]/g,'') || '1010').slice(0,md.bitlen);
+  e.target.value = md.bits; drawMD();
+});
+md_random.onclick = ()=>{ md.bits = randomBits(md.bitlen); md_bits.value = md.bits; drawMD(); };
+md_clean.onclick = ()=>{
+  Object.assign(md,{mode:'BPSK',specType:'Auto',fc:6000,rs:1000,amp:1,sps:80,fftN:2048,snr:30,delay:0.10,mg:0.10,mphi:30,noiseMode:'on'});
+  md_mode.value=md.mode; md_specType.value=md.specType; syncMD(); drawMD();
+};
+md_harsh.onclick = ()=>{
+  Object.assign(md,{mode:'64-QAM',specType:'Auto',fc:7000,rs:1200,amp:1.2,sps:90,fftN:2048,snr:10,delay:0.55,mg:0.45,mphi:120,noiseMode:'on'});
+  md_mode.value=md.mode; md_specType.value=md.specType; syncMD(); drawMD();
+};
+function syncMD(){
+  md_fc.value = md_fcn.value = md.fc;
+  md_rs.value = md_rsn.value = md.rs;
+  md_amp.value = md_ampn.value = md.amp;
+  md_sps.value = md_spsn.value = md.sps;
+  md_fftN.value = md_fftNn.value = md.fftN;
+  md_askFreq.value = md_askFreqn.value = md.askFreq;
+  md_askAmp1.value = md_askAmp1n.value = md.askAmp1;
+  md_askAmp0.value = md_askAmp0n.value = md.askAmp0;
+  md_fskF0.value = md_fskF0n.value = md.fskF0;
+  md_fskF1.value = md_fskF1n.value = md.fskF1;
+  md_pskP0.value = md_pskP0n.value = md.pskP0;
+  md_pskP1.value = md_pskP1n.value = md.pskP1;
+  md_snr.value = md_snrn.value = md.snr;
+  md_qamErr.value = md_qamErrn.value = md.qamErr;
+  md_qamFc.value = md_qamFcn.value = md.fc;
+  md_bitlen.value = String(md.bitlen);
+  md_domainView.value = md.domainView;
+  md_measureToggle.value = md.measureOn ? 'on' : 'off';
+  md_waveView.value = md.waveView;
+  md_noiseMode.value = md.noiseMode;
+}
+function estimateBer(mode, snrDb){
+  const ebn0 = Math.pow(10, snrDb/10);
+  const q = x => 0.5*Math.exp(-0.5*x*x); // simple approximation
+  if(mode==='ASK') return Math.min(0.5, 0.5*Math.exp(-ebn0/2));
+  if(mode==='FSK') return Math.min(0.5, 0.5*Math.exp(-ebn0/2));
+  if(mode==='BPSK') return Math.min(0.5, q(Math.sqrt(2*ebn0)));
+  if(mode==='QPSK (4-QAM)') return Math.min(0.5, q(Math.sqrt(2*ebn0)));
+  if(mode==='16-QAM'){
+    const M=16,k=Math.log2(M);
+    return Math.min(0.5, (4/k)*(1-1/Math.sqrt(M))*q(Math.sqrt(3*k*ebn0/(M-1))));
+  }
+  if(mode==='64-QAM'){
+    const M=64,k=Math.log2(M);
+    return Math.min(0.5, (4/k)*(1-1/Math.sqrt(M))*q(Math.sqrt(3*k*ebn0/(M-1))));
+  }
+  if(mode==='256-QAM'){
+    const M=256,k=Math.log2(M);
+    return Math.min(0.5, (4/k)*(1-1/Math.sqrt(M))*q(Math.sqrt(3*k*ebn0/(M-1))));
+  }
+  return 0;
+}
+
+function bitsPerSymbol(mode){
+  if(mode==='QPSK (4-QAM)') return 2;
+  if(mode==='16-QAM') return 4;
+  if(mode==='64-QAM') return 6;
+  if(mode==='256-QAM') return 8;
+  return 1;
+}
+function qamGrid(M){
+  const L = Math.sqrt(M);
+  const vals = [];
+  for(let i=-(L-1); i<=L-1; i+=2) vals.push(i);
+  const scale = Math.sqrt((2/3)*(M-1));
+  return {vals, scale};
+}
+function qamIdealPointsWithBits(mode){
+  const bps = bitsPerSymbol(mode);
+  if(mode==='QPSK (4-QAM)'){
+    const labels = ['00','01','10','11'];
+    const pts = [
+      {I:-1/Math.SQRT2, Q: 1/Math.SQRT2, bits:labels[0]},
+      {I: 1/Math.SQRT2, Q: 1/Math.SQRT2, bits:labels[1]},
+      {I:-1/Math.SQRT2, Q:-1/Math.SQRT2, bits:labels[2]},
+      {I: 1/Math.SQRT2, Q:-1/Math.SQRT2, bits:labels[3]}
+    ];
+    return pts;
+  }
+  if(mode==='16-QAM' || mode==='64-QAM' || mode==='256-QAM'){
+    const M = parseInt(mode,10);
+    const pts = [];
+    for(let n=0; n<M; n++){
+      const bits = n.toString(2).padStart(bps,'0');
+      const mapped = mapSymbols(bits, mode)[0];
+      pts.push({I:mapped.I, Q:mapped.Q, bits});
+    }
+    const seen = new Set();
+    return pts.filter(p=>{
+      const key = `${p.I.toFixed(6)},${p.Q.toFixed(6)}`;
+      if(seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).sort((a,b)=> (b.Q-a.Q) || (a.I-b.I));
+  }
+  return [];
+}
+function qamIdealPoints(mode){
+  return qamIdealPointsWithBits(mode).map(p=>({I:p.I,Q:p.Q}));
+}
+function mapSymbols(bits, mode){
+  if(mode==='QPSK (4-QAM)' || mode==='16-QAM' || mode==='64-QAM' || mode==='256-QAM'){
+    const M = mode==='QPSK (4-QAM)' ? 4 : parseInt(mode,10);
+    const bps = Math.log2(M);
+    const {vals, scale} = qamGrid(M);
+    const syms = [];
+    for(let i=0;i<bits.length;i+=bps){
+      const b=(bits.slice(i,i+bps)+'0'.repeat(bps)).slice(0,bps);
+      const half=bps/2;
+      const Iidx=parseInt(b.slice(0,half),2);
+      const Qidx=parseInt(b.slice(half),2);
+      const I = vals[Iidx % vals.length] / scale;
+      const Q = vals[(vals.length-1)-(Qidx % vals.length)] / scale;
+      syms.push({I,Q,bits:b});
+    }
+    return syms;
+  }
+  return bits.split('').map(b=>({I:b==='1'?1:-1,Q:0,bits:b}));
+}
+function buildMD(){
+  const syms = mapSymbols(md.bits, md.mode);
+  const fs = md.rs * md.sps;
+  const total = syms.length * md.sps;
+  const rf = new Array(total).fill(0);
+  const envRe = new Array(total).fill(0);
+  const envIm = new Array(total).fill(0);
+  for(let s=0;s<syms.length;s++){
+    for(let n=0;n<md.sps;n++){
+      const idx=s*md.sps+n, t=idx/fs;
+      if(md.mode==='ASK'){
+        const bit1 = syms[s].I > 0;
+        const a = bit1 ? md.askAmp1 : md.askAmp0;
+        rf[idx] = a*Math.cos(2*Math.PI*md.askFreq*t);
+        envRe[idx] = a; envIm[idx] = 0;
+      }else if(md.mode==='FSK'){
+        const bit1 = syms[s].I > 0;
+        const f = bit1 ? md.fskF1 : md.fskF0;
+        rf[idx] = md.amp*Math.cos(2*Math.PI*f*t);
+        envRe[idx] = bit1 ? 1 : -1; envIm[idx] = 0;
+      }else if(md.mode==='BPSK'){
+        const bit1 = syms[s].I > 0;
+        const ph = (bit1 ? md.pskP1 : md.pskP0) * Math.PI/180;
+        rf[idx] = md.amp*Math.cos(2*Math.PI*md.fc*t + ph);
+        envRe[idx] = Math.cos(ph); envIm[idx] = Math.sin(ph);
+      }else{
+        const I=syms[s].I, Q=syms[s].Q;
+        rf[idx] = md.amp*(I*Math.cos(2*Math.PI*md.fc*t) - Q*Math.sin(2*Math.PI*md.fc*t));
+        envRe[idx] = I; envIm[idx] = Q;
+      }
+    }
+  }
+  const rfOut = rf.slice(), reOut = envRe.slice(), imOut = envIm.slice();
+  if(md.noiseMode !== 'off'){
+    const p = rfOut.reduce((a,b)=>a+b*b,0)/Math.max(1,rfOut.length);
+    const np = p / Math.pow(10, md.snr/10);
+    const sigma = Math.sqrt(np);
+    const envSigma = 0.08/Math.sqrt(Math.pow(10, md.snr/10));
+    for(let n=0;n<rfOut.length;n++){
+      rfOut[n] += sigma*gauss();
+      reOut[n] += envSigma*gauss();
+      imOut[n] += envSigma*gauss();
+    }
+  }
+  return {rf:rfOut, re:reOut, im:imOut, syms, fs};
+}
+
+function canvasPointToData(canvas, evt, transform){
+  if(!transform) return null;
+  const rect = canvas.getBoundingClientRect();
+  const cx = (evt.clientX - rect.left) * canvas.width / rect.width;
+  const cy = (evt.clientY - rect.top) * canvas.height / rect.height;
+  const {pad,w,h,xmin,xmax,ymin,ymax} = transform;
+  if(cx < pad || cx > w-pad || cy < pad || cy > h-pad) return null;
+  const x = xmin + (cx - pad) / (w - 2*pad) * (xmax - xmin);
+  const y = ymax - (cy - pad) / (h - 2*pad) * (ymax - ymin);
+  return {x, y, cx, cy};
+}
+function ensureCursorState(bucket){
+  if(!bucket.transform) return;
+  const {xmin,xmax,ymin,ymax} = bucket.transform;
+  if(bucket.x == null || !Number.isFinite(bucket.x)) bucket.x = (xmin + xmax) / 2;
+  if(bucket.y == null || !Number.isFinite(bucket.y)) bucket.y = (ymin + ymax) / 2;
+  bucket.x = clamp(bucket.x, xmin, xmax);
+  bucket.y = clamp(bucket.y, ymin, ymax);
+}
+function resetCursors(bucket){
+  bucket.x = null;
+  bucket.y = null;
+  bucket.drag = null;
+}
+function hitCursorAxis(bucket, cx, cy){
+  if(!bucket.transform) return null;
+  ensureCursorState(bucket);
+  const {pad,w,h,xmin,xmax,ymin,ymax} = bucket.transform;
+  const X = v => pad + (v - xmin)/(xmax - xmin)*(w - 2*pad);
+  const Y = v => h - pad - (v - ymin)/(ymax - ymin)*(h - 2*pad);
+  const xLine = X(bucket.x), yLine = Y(bucket.y);
+  const nearXLine = Math.abs(cx - xLine) <= 8 && cy >= pad && cy <= h - pad;
+  const nearYLine = Math.abs(cy - yLine) <= 8 && cx >= pad && cx <= w - pad;
+  const xHandle = cy >= h - pad - 14 && cy <= h - pad + 10 && Math.abs(cx - xLine) <= 12;
+  const yHandle = cx >= pad - 10 && cx <= pad + 14 && Math.abs(cy - yLine) <= 12;
+  if(xHandle || nearXLine) return 'x';
+  if(yHandle || nearYLine) return 'y';
+  return null;
+}
+function updateCursorFromEvent(canvas, evt, bucket, axis){
+  if(!bucket.transform) return false;
+  const rect = canvas.getBoundingClientRect();
+  const cx = (evt.clientX - rect.left) * canvas.width / rect.width;
+  const cy = (evt.clientY - rect.top) * canvas.height / rect.height;
+  const {pad,w,h,xmin,xmax,ymin,ymax} = bucket.transform;
+  if(axis === 'x'){
+    const clamped = clamp(cx, pad, w - pad);
+    bucket.x = xmin + (clamped - pad) / (w - 2*pad) * (xmax - xmin);
+    return true;
+  }
+  if(axis === 'y'){
+    const clamped = clamp(cy, pad, h - pad);
+    bucket.y = ymax - (clamped - pad) / (h - 2*pad) * (ymax - ymin);
+    return true;
+  }
+  return false;
+}
+function drawCursorOverlay(ctx, bucket, pal, xFormatter, yFormatter, enabled=true){
+  if(!enabled || !bucket.transform) return;
+  ensureCursorState(bucket);
+  const {pad,w,h,xmin,xmax,ymin,ymax} = bucket.transform;
+  const X = v => pad + (v - xmin)/(xmax - xmin)*(w - 2*pad);
+  const Y = v => h - pad - (v - ymin)/(ymax - ymin)*(h - 2*pad);
+  const xPos = X(bucket.x);
+  const yPos = Y(bucket.y);
+  ctx.save();
+  ctx.setLineDash([6,4]);
+  ctx.lineWidth = 1.6;
+  ctx.strokeStyle = pal.accent;
+  ctx.beginPath();
+  ctx.moveTo(xPos, pad); ctx.lineTo(xPos, h-pad);
+  ctx.stroke();
+  ctx.strokeStyle = pal.orange;
+  ctx.beginPath();
+  ctx.moveTo(pad, yPos); ctx.lineTo(w-pad, yPos);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = pal.accent;
+  ctx.beginPath();
+  ctx.moveTo(xPos, h-pad+10);
+  ctx.lineTo(xPos-8, h-pad-2);
+  ctx.lineTo(xPos+8, h-pad-2);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = pal.orange;
+  ctx.beginPath();
+  ctx.moveTo(pad-10, yPos);
+  ctx.lineTo(pad+2, yPos-8);
+  ctx.lineTo(pad+2, yPos+8);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = pal.canvas;
+  ctx.strokeStyle = pal.line;
+  ctx.lineWidth = 1;
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  const xLabel = `X: ${xFormatter(bucket.x)}`;
+  const xw = ctx.measureText(xLabel).width + 14;
+  let xBoxX = clamp(xPos - xw/2, 6, w - xw - 6);
+  ctx.fillRect(xBoxX, h-pad+14, xw, 22);
+  ctx.strokeRect(xBoxX, h-pad+14, xw, 22);
+  ctx.fillStyle = pal.ink;
+  ctx.fillText(xLabel, xBoxX + xw/2, h-pad+29);
+
+  ctx.textAlign = 'left';
+  ctx.fillStyle = pal.canvas;
+  const yLabel = `Y: ${yFormatter(bucket.y)}`;
+  const yw = ctx.measureText(yLabel).width + 14;
+  let yBoxY = clamp(yPos - 11, 6, h - 28);
+  ctx.fillRect(pad+8, yBoxY, yw, 22);
+  ctx.strokeRect(pad+8, yBoxY, yw, 22);
+  ctx.fillStyle = pal.ink;
+  ctx.fillText(yLabel, pad+15, yBoxY+15);
+  ctx.restore();
+}
+function installAxisCursors(canvas, bucket, redraw, isEnabled=()=>md.measureOn){
+  if(!canvas) return;
+  canvas.addEventListener('mousedown', e=>{
+    if(!isEnabled()) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * canvas.width / rect.width;
+    const cy = (e.clientY - rect.top) * canvas.height / rect.height;
+    const axis = hitCursorAxis(bucket, cx, cy);
+    if(!axis) return;
+    e.preventDefault();
+    e.stopPropagation();
+    bucket.drag = axis;
+    updateCursorFromEvent(canvas, e, bucket, axis);
+    redraw();
+  }, true);
+  canvas.addEventListener('mousemove', e=>{
+    if(!isEnabled()){
+      bucket.drag = null;
+      canvas.style.cursor = 'default';
+      return;
+    }
+    const rect = canvas.getBoundingClientRect();
+    const cx = (e.clientX - rect.left) * canvas.width / rect.width;
+    const cy = (e.clientY - rect.top) * canvas.height / rect.height;
+    if(bucket.drag){
+      updateCursorFromEvent(canvas, e, bucket, bucket.drag);
+      redraw();
+      canvas.style.cursor = bucket.drag === 'x' ? 'ew-resize' : 'ns-resize';
+      return;
+    }
+    const axis = hitCursorAxis(bucket, cx, cy);
+    canvas.style.cursor = axis === 'x' ? 'ew-resize' : axis === 'y' ? 'ns-resize' : 'default';
+  });
+  window.addEventListener('mouseup', ()=>{ bucket.drag = null; });
+  canvas.addEventListener('mouseleave', ()=>{ if(!bucket.drag) canvas.style.cursor = 'default'; });
+  canvas.addEventListener('dblclick', e=>{
+    if(!isEnabled()) return;
+    e.preventDefault();
+    resetCursors(bucket);
+    redraw();
+  });
+}
+function mdPeakForYAxis(){
+  if(md.mode === 'ASK') return Math.max(md.askAmp1, md.askAmp0, 0.5);
+  if(md.mode === 'FSK' || md.mode === 'BPSK') return Math.max(md.amp, 0.5);
+  return Math.max(1.6 * md.amp, 0.8);
+}
+function drawMDTime(sig){
+  const c=md_time, ctx=c.getContext('2d'), w=c.width, h=c.height, pad=50;
+  baseGrid(ctx,w,h,pad,'time (s)','amplitude');
+  const pal = themePalette();
+  const totalTime = sig.rf.length / sig.fs;
+  const visibleTime = Math.max(8 / sig.fs, md.baseTimeWindow / md.timeView.zoom);
+  const maxStartTime = Math.max(0, totalTime - visibleTime);
+  const t0 = clamp(md.timeView.pan * maxStartTime, 0, maxStartTime);
+  const t1 = t0 + visibleTime;
+  const start = clamp(Math.floor(t0 * sig.fs), 0, Math.max(0, sig.rf.length - 1));
+  const end = clamp(Math.ceil(Math.min(t1, totalTime) * sig.fs), start + 2, sig.rf.length);
+  const visible = Math.max(2, end - start);
+  const plotW = w - 2*pad;
+  const plotH = h - 2*pad;
+
+  const rawSlice = sig.rf.slice(start,end);
+  const avgWindow = Math.max(3, Math.round(md.sps / 3));
+  const displayData = rawSlice;
+
+  const basePeak = mdPeakForYAxis();
+  const ymax = Math.max(0.25, basePeak * 1.35);
+  const ymin = -ymax;
+
+  const Xtime = t => pad + (t - t0) / visibleTime * plotW;
+  const X = i => Xtime((start + i) / sig.fs);
+  const Y = v => h - pad - (v - ymin)/(ymax - ymin)*plotH;
+  mdMeasure.time.transform = {pad,w,h,xmin:t0,xmax:t1,ymin,ymax};
+
+  ctx.font='11px Arial';
+  ctx.fillStyle=pal.muted;
+
+  const ySteps = 6;
+  for(let i=0;i<=ySteps;i++){
+    const val = ymin + i*(ymax-ymin)/ySteps;
+    const y = Y(val);
+    ctx.strokeStyle = Math.abs(val) < 1e-9 ? pal.axisZero : pal.gridMajor;
+    ctx.lineWidth = Math.abs(val) < 1e-9 ? 1.5 : 1;
+    ctx.beginPath();
+    ctx.moveTo(pad, y);
+    ctx.lineTo(w-pad, y);
+    ctx.stroke();
+    ctx.fillText(val.toFixed(2), 8, y+4);
+  }
+
+  const xSteps = 6;
+  ctx.textAlign = 'center';
+  for(let i=0;i<=xSteps;i++){
+    const t = t0 + i*visibleTime/xSteps;
+    const x = Xtime(t);
+    ctx.strokeStyle = pal.gridMajor;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(x, pad);
+    ctx.lineTo(x, h-pad);
+    ctx.stroke();
+    ctx.fillText(t.toExponential(2), x, h-18);
+  }
+  ctx.textAlign = 'left';
+
+  ctx.strokeStyle=pal.blue;
+  ctx.lineWidth=2.6;
+  ctx.beginPath();
+  for(let i=0;i<displayData.length;i++){
+    const x=X(i), y=Y(displayData[i]);
+    if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  }
+  ctx.stroke();
+  const visiblePeak = rawSlice.reduce((m,v)=>Math.max(m, Math.abs(v)), 0);
+  const visibleRms = Math.sqrt(rawSlice.reduce((a,v)=>a+v*v,0)/Math.max(1,rawSlice.length));
+  ctx.fillStyle = pal.canvas;
+  ctx.fillRect(w-170, pad+8, 112, 44);
+  ctx.strokeStyle = pal.line;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(w-170, pad+8, 112, 44);
+  ctx.fillStyle = pal.muted;
+  ctx.font = '11px Arial';
+  ctx.fillText(`Peak: ${visiblePeak.toFixed(2)}`, w-160, pad+26);
+  ctx.fillText(`RMS: ${visibleRms.toFixed(2)}`, w-160, pad+42);
+
+  drawCursorOverlay(ctx, mdMeasure.time, pal, v => v.toExponential(2) + " s", v => v.toFixed(2), md.measureOn);
+  md_timeInfo.textContent = `Time window: ${t0.toExponential(2)} to ${t1.toExponential(2)} s · Real waveform`;
+}
+function mdSpectrumChoice(){
+  if(md.specType === 'RF waveform') return 'rf';
+  if(md.specType === 'Digital envelope') return 'env';
+  return 'rf';
+}
+
+function mdDomainChoice(){
+  if(md.domainView === 'Baseband') return 'baseband';
+  if(md.domainView === 'RF') return 'rf';
+  return mdSpectrumChoice() === 'env' ? 'baseband' : 'rf';
+}
+function drawMDSpec(sig){
+  const c=md_spec, ctx=c.getContext('2d'), w=c.width, h=c.height, pad=42;
+  baseGrid(ctx,w,h,pad,'frequency (Hz)','power (dB)');
+  const specChoice = mdSpectrumChoice();
+  const domainChoice = mdDomainChoice();
+  const fs = sig.fs;
+
+  const carrierCenter = md.mode === 'ASK' ? md.askFreq :
+                        md.mode === 'FSK' ? (md.fskF0 + md.fskF1)/2 :
+                        md.fc;
+  const baseFmax = fs/2;
+  const rfSpan = Math.max(baseFmax, carrierCenter*2.5);
+  const fullFmax = domainChoice === 'baseband' ? baseFmax : rfSpan;
+  const fullSpan = 2*fullFmax;
+  const visibleSpan = fullSpan / md.freqView.zoom;
+  const maxStart = Math.max(0, fullSpan - visibleSpan);
+  const spanStart = md.freqView.pan * maxStart;
+  const f0 = -fullFmax + spanStart;
+  const f1 = f0 + visibleSpan;
+  const ymin = -60, ymax = 5;
+
+  let pts = [];
+
+  if(specChoice === 'env' && domainChoice === 'baseband'){
+    const psdTwoSided = computePSDComplexTwoSided(sig.re, sig.im, md.fftN);
+    const dbRawTwoSided = applyDbNorm(psdTwoSided);
+    const dbTwoSided = smoothArray(dbRawTwoSided, 4);
+    const avgPasses = Math.max(28, Math.round(md.sps / 2));
+    const avgWindow = Math.max(15, Math.round(md.sps / 3));
+    const dbDisplayTwoSided = md.waveView === 'Average'
+      ? movingAverage(smoothArray(dbRawTwoSided, avgPasses), avgWindow)
+      : dbTwoSided;
+    const binHz = fs / dbDisplayTwoSided.length;
+    pts = dbDisplayTwoSided.map((v, i) => [(-fs/2) + i*binHz, v]).filter(p => p[0] >= f0 && p[0] <= f1);
+  } else {
+    const psdPos = specChoice === 'env' ? computePSDComplex(sig.re, sig.im, md.fftN) : computePSDReal(sig.rf, md.fftN);
+    const dbRaw = applyDbNorm(psdPos);
+    const dbPos = smoothArray(dbRaw, 4);
+    const avgPasses = Math.max(28, Math.round(md.sps / 2));
+    const avgWindow = Math.max(15, Math.round(md.sps / 3));
+    const dbDisplayBase = md.waveView === 'Average'
+      ? movingAverage(smoothArray(dbRaw, avgPasses), avgWindow)
+      : dbPos;
+
+    if(domainChoice === 'baseband'){
+      for(let i=dbPos.length-1;i>=1;i--){
+        const f = -i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+      for(let i=0;i<dbPos.length;i++){
+        const f = i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+    } else {
+      const center = carrierCenter;
+      for(let i=dbPos.length-1;i>=1;i--){
+        const f = center - i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+      for(let i=0;i<dbPos.length;i++){
+        const f = center + i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+      for(let i=dbPos.length-1;i>=1;i--){
+        const f = -center - i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+      for(let i=0;i<dbPos.length;i++){
+        const f = -center + i*(fs/2)/dbPos.length;
+        if(f>=f0 && f<=f1) pts.push([f, dbDisplayBase[i]]);
+      }
+      pts.sort((a,b)=>a[0]-b[0]);
+    }
+  }
+
+  if(pts.length < 2){
+    ctx.fillStyle=themePalette().muted;
+    ctx.fillText('Zoom out to view the spectrum.', pad+10, pad+18);
+    return;
+  }
+
+  const ptsY = pts.map(p=>p[1]);
+  const ptsDisplayY = md.waveView === 'Average'
+    ? movingAverage(smoothArray(ptsY, 10), Math.max(21, Math.round(pts.length / 80)))
+    : ptsY;
+  const ptsDisplay = pts.map((p, i) => [p[0], ptsDisplayY[i]]);
+
+  const X = f => pad + (f-f0)/(f1-f0)*(w-2*pad);
+  const Y = v => h-pad - (v-ymin)/(ymax-ymin)*(h-2*pad);
+  mdMeasure.spec.transform = {pad,w,h,xmin:f0,xmax:f1,ymin,ymax};
+
+  ctx.strokeStyle=themePalette().green;
+  ctx.lineWidth=2.8;
+  ctx.beginPath();
+  ptsDisplay.forEach((p,idx)=>{
+    const x=X(p[0]), y=Y(clamp(p[1], ymin, ymax));
+    if(idx===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+  });
+  ctx.stroke();
+
+  if(0>=f0 && 0<=f1){
+    const x0 = X(0);
+    ctx.strokeStyle=themePalette().axisZero;
+    ctx.beginPath(); ctx.moveTo(x0,pad); ctx.lineTo(x0,h-pad); ctx.stroke();
+  }
+
+  ctx.fillStyle=themePalette().muted; ctx.font='11px Arial';
+  for(let i=0;i<=6;i++){
+    const f = f0 + i*(f1-f0)/6, x = pad + i*(w-2*pad)/6;
+    ctx.fillText(f.toFixed(0), x-14, h-18);
+  }
+  for(let i=0;i<=6;i++){
+    const yv = ymax - i*(ymax-ymin)/6;
+    ctx.fillText(yv.toFixed(0), 8, Y(yv)+4);
+  }
+  drawCursorOverlay(ctx, mdMeasure.spec, themePalette(), v => v.toFixed(1) + " Hz", v => v.toFixed(1) + " dB", md.measureOn);
+  md_freqInfo.textContent = `${specChoice === 'env' ? 'Digital-envelope' : 'RF-waveform'} spectrum in ${domainChoice === 'baseband' ? 'baseband' : 'RF'} view: ${f0.toFixed(0)} to ${f1.toFixed(0)} Hz`;
+}
+function drawQAMPreview(sig){
+  const panel = document.getElementById('md_constPanel');
+  const isQamMode = (md.mode === 'QPSK (4-QAM)' || md.mode.includes('QAM'));
+  if(panel) panel.style.display = isQamMode ? '' : 'none';
+  const c = document.getElementById('md_const');
+  if(!c || !isQamMode) return;
+  const pal = themePalette();
+  const ctx = c.getContext('2d'), w = c.width, h = c.height, pad = 42;
+  baseGrid(ctx,w,h,pad,'In-phase (I)','Quadrature (Q)');
+
+  ctx.strokeStyle = pal.axisZero;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(pad,h/2); ctx.lineTo(w-pad,h/2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(w/2,pad); ctx.lineTo(w/2,h-pad); ctx.stroke();
+
+  const idealPoints = qamIdealPointsWithBits(md.mode);
+  let maxAbs = 1.35;
+  idealPoints.forEach(p=>{ maxAbs = Math.max(maxAbs, Math.abs(p.I), Math.abs(p.Q)); });
+  const X = v => w/2 + v*(w/2-pad)/(maxAbs*1.18);
+  const Y = v => h/2 - v*(h/2-pad)/(maxAbs*1.18);
+
+  ctx.fillStyle = pal.muted;
+  ctx.font = '12px Arial';
+  ctx.fillText('Quadrant II', pad+8, pad+14);
+  ctx.fillText('Quadrant I', w-pad-78, pad+14);
+  ctx.fillText('Quadrant III', pad+8, h-pad-10);
+  ctx.fillText('Quadrant IV', w-pad-82, h-pad-10);
+
+  for(let i=-Math.ceil(maxAbs); i<=Math.ceil(maxAbs); i++){
+    if(i===0) continue;
+    if(Math.abs(i) > maxAbs*1.02) continue;
+    ctx.strokeStyle = pal.gridMajor;
+    ctx.lineWidth = 1;
+    const x = X(i), y = Y(i);
+    ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,h-pad); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke();
+  }
+
+  const errScale = md.qamErr * 0.42;
+  const displayedPoints = idealPoints.map(p=>{
+    const jitterI = errScale === 0 ? 0 : gauss()*errScale;
+    const jitterQ = errScale === 0 ? 0 : gauss()*errScale;
+    return {I:p.I + jitterI, Q:p.Q + jitterQ, bits:p.bits, idealI:p.I, idealQ:p.Q};
+  });
+
+  mdConstHover.items = displayedPoints.map(p=>({x:X(p.I), y:Y(p.Q), bits:p.bits, I:p.I, Q:p.Q, idealI:p.idealI, idealQ:p.idealQ, r:10}));
+
+  ctx.fillStyle = pal.orange;
+  displayedPoints.forEach(p=>{
+    ctx.globalAlpha = 0.95;
+    ctx.beginPath(); ctx.arc(X(p.I), Y(p.Q), 4.5, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  if(mdConstHover.active){
+    const tip = mdConstHover.active;
+    const tx = Math.min(w-120, Math.max(12, tip.x + 12));
+    const ty = Math.max(24, tip.y - 12);
+    const label = `bits: ${tip.bits}`;
+    ctx.font = '12px Arial';
+    const tw = ctx.measureText(label).width + 14;
+    ctx.fillStyle = pal.canvas;
+    ctx.strokeStyle = pal.line;
+    ctx.lineWidth = 1;
+    ctx.fillRect(tx, ty-18, tw, 22);
+    ctx.strokeRect(tx, ty-18, tw, 22);
+    ctx.fillStyle = pal.ink;
+    ctx.fillText(label, tx+7, ty-3);
+
+    ctx.strokeStyle = pal.orange;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(tip.x, tip.y, 8, 0, Math.PI*2); ctx.stroke();
+  }
+
+  ctx.fillStyle = pal.muted;
+  ctx.font = '12px Arial';
+  ctx.fillText('Orange dots = displayed constellation (move with error spread)', pad+8, 18);
+  md_constInfo.textContent = md.qamErr === 0 ? `Perfect ${md.mode} grid` : `${md.mode} spread: ${md.qamErr.toFixed(2)} (orange dots move)`;
+}
+function drawMD(){
+  md_mMode.textContent = md.mode;
+  const bps = bitsPerSymbol(md.mode);
+  md_mBps.textContent = `${bps}`;
+  md_mBr.textContent = `${(md.rs * bps).toFixed(0)} bps`;
+  md_bitsShown.textContent = md.bits;
+  const ber = estimateBer(md.mode, md.snr);
+  md_mBer.textContent = ber < 1e-4 ? ber.toExponential(2) : ber.toFixed(4);
+  const sig = buildMD();
+  mdLastSig = sig;
+  const peak = sig.rf.reduce((m,v)=>Math.max(m, Math.abs(v)), 0);
+  const rms = Math.sqrt(sig.rf.reduce((a,v)=>a+v*v,0)/Math.max(1,sig.rf.length));
+  md_mPeak.textContent = peak.toFixed(2);
+  md_mRms.textContent = rms.toFixed(2);
+  drawMDTime(sig);
+  drawMDSpec(sig);
+  drawQAMPreview(sig);
+  updateModeGroups();
+  const txt = {
+    'ASK':'ASK varies the carrier amplitude between symbol states. It is simple to explain because the envelope changes directly.',
+    'FSK':'FSK uses different carrier frequencies for different symbols. In the spectrum you see separated lobe regions around the active tones.',
+    'BPSK':'BPSK keeps amplitude nearly constant but flips the phase by 180°. It is good for explaining phase changes with a simple constellation.',
+    'QPSK (4-QAM)':'QPSK carries 2 bits per symbol with four I-Q states. It is the simplest balanced digital I-Q modulation.',
+    '16-QAM':'16-QAM carries 4 bits per symbol. It is more efficient than QPSK, but the points are closer together.',
+    '64-QAM':'64-QAM carries 6 bits per symbol. It has much higher density, so it needs better SNR.',
+    '256-QAM':'256-QAM carries 8 bits per symbol and is very efficient, but also very sensitive to noise and channel distortion.'
+  };
+  const specChoice = mdSpectrumChoice();
+  const domainChoice = mdDomainChoice();
+  md_modeText.textContent = txt[md.mode] + ` Spectrum trace is set to ${md.waveView}.`;
+  if(domainChoice === 'rf'){
+    md_modeText.textContent += ' RF view stays mirrored at positive and negative frequency because the displayed passband waveform is real-valued.';
+  }else if(specChoice === 'env'){
+    md_modeText.textContent += ' Complex baseband view uses the true two-sided I/Q spectrum, so the negative-frequency side does not have to be a mirror copy of the positive side.';
+  }else{
+    md_modeText.textContent += ' Baseband view of a real-valued waveform still looks mirrored because real signals have Hermitian symmetry in frequency.';
+  }
+  if(md.mode === 'QPSK (4-QAM)' || md.mode.includes('QAM')){
+    md_modeText.textContent += ` Carrier frequency is ${md.fc.toFixed(0)} Hz, so the RF spectrum stays centered around that frequency unless you manually switch to baseband or digital-envelope view. Error spread is ${md.qamErr.toFixed(2)}, where 0 means the orange dots stay exactly on the ideal locations and higher values move the orange dots randomly around those QAM points.`;
+  }
+  if(md.waveView === 'Average'){
+    md_modeText.textContent += ' Average spectrum uses stronger smoothing on the PSD so the spectrum curve looks smoother and less zigzag.';
+  }
+  md_modeText.textContent += md.noiseMode === 'off' ? ' Channel noise is OFF, so the waveform and spectrum are shown clean.' : ` Channel noise is ON at ${md.snr.toFixed(0)} dB SNR.`;
+  if(md.measureOn){
+    md_modeText.textContent += ' Measurement cursors are on. Drag the vertical cursor for X values and the horizontal cursor for Y values.';
+  }
+}
+
+/* ---------- attach zoom/pan ---------- */
+['lc_timeUNRZ','lc_timePNRZ','lc_timeRZ','lc_timeBAMI','lc_timeMAN'].forEach(id=>setupZoomPan(document.getElementById(id), lc.timeView, drawLC));
+['lc_fftUNRZ','lc_fftPNRZ','lc_fftRZ','lc_fftBAMI','lc_fftMAN'].forEach(id=>setupZoomPan(document.getElementById(id), lc.freqView, drawLC));
+setupZoomPan(document.getElementById('md_time'), md.timeView, drawMD);
+setupZoomPan(document.getElementById('md_spec'), md.freqView, drawMD);
+
+
+
+
+['lc_timeUNRZ','lc_timePNRZ','lc_timeRZ','lc_timeBAMI','lc_timeMAN'].forEach(id=>{
+  const canvas = document.getElementById(id);
+  installAxisCursors(canvas, lcMeasure.time, drawLC, ()=>lc.measureOn);
+});
+['lc_fftUNRZ','lc_fftPNRZ','lc_fftRZ','lc_fftBAMI','lc_fftMAN'].forEach(id=>{
+  const canvas = document.getElementById(id);
+  installAxisCursors(canvas, lcMeasure.spec, drawLC, ()=>lc.measureOn);
+});
+
+const mdTimeCanvas = document.getElementById('md_time');
+installAxisCursors(mdTimeCanvas, mdMeasure.time, drawMD, ()=>md.measureOn);
+const mdSpecCanvas = document.getElementById('md_spec');
+installAxisCursors(mdSpecCanvas, mdMeasure.spec, drawMD, ()=>md.measureOn);
+
+const mdConstCanvas = document.getElementById('md_const');
+if(mdConstCanvas){
+  mdConstCanvas.addEventListener('mousemove', e=>{
+    const rect = mdConstCanvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * mdConstCanvas.width / rect.width;
+    const y = (e.clientY - rect.top) * mdConstCanvas.height / rect.height;
+    let found = null;
+    for(const item of mdConstHover.items){
+      const dx = x - item.x, dy = y - item.y;
+      if(dx*dx + dy*dy <= item.r*item.r){ found = item; break; }
+    }
+    const changed = (!found && mdConstHover.active) || (found && (!mdConstHover.active || found.bits !== mdConstHover.active.bits || found.x !== mdConstHover.active.x || found.y !== mdConstHover.active.y));
+    if(changed){
+      mdConstHover.active = found;
+      if(mdLastSig) drawQAMPreview(mdLastSig); else drawMD();
+    }
+    mdConstCanvas.style.cursor = found ? 'pointer' : 'default';
+  });
+  mdConstCanvas.addEventListener('mouseleave', ()=>{
+    if(mdConstHover.active){
+      mdConstHover.active = null;
+      if(mdLastSig) drawQAMPreview(mdLastSig); else drawMD();
+    }
+    mdConstCanvas.style.cursor = 'default';
+  });
+}
+
+
+const lcVisibility = {UNRZ:true, PNRZ:true, RZ:true, BAMI:true, MAN:true};
+function setEyeButtonState(btn, show){
+  if(!btn) return;
+  btn.classList.toggle('off', !show);
+  btn.textContent = show ? '👁' + (btn.id.startsWith('lc_eye') ? ' ' + btn.textContent.replace(/^👁 |^🙈 /,'').replace(/^Unipolar|^Polar|^RZ|^Bipolar|^Manchester/, m=>m) : '') : '🙈' + (btn.id.startsWith('lc_eye') ? ' ' + btn.textContent.replace(/^👁 |^🙈 /,'').replace(/^Unipolar|^Polar|^RZ|^Bipolar|^Manchester/, m=>m) : '');
+}
+function syncLCButtons(code){
+  const show = !!lcVisibility[code];
+  const toolbar = document.getElementById('lc_eye'+code);
+  const timeBtn = document.getElementById('lc_panelBtn_'+code+'_time');
+  const specBtn = document.getElementById('lc_panelBtn_'+code+'_spec');
+  if(toolbar){
+    const labels={UNRZ:'Unipolar NRZ',PNRZ:'Polar NRZ',RZ:'RZ',BAMI:'Bipolar AMI',MAN:'Manchester'};
+    toolbar.classList.toggle('off', !show);
+    toolbar.textContent = (show ? '👁 ' : '🙈 ') + labels[code];
+  }
+  [timeBtn,specBtn].forEach(btn=>{
+    if(btn){
+      btn.classList.toggle('off', !show);
+      btn.textContent = show ? '👁' : '🙈';
+      btn.title = show ? 'Hide graph' : 'Show graph';
+    }
+  });
+}
+function updateLCGridLayout(gridId){
+  const grid = document.getElementById(gridId);
+  if(!grid) return;
+  const visible = [...grid.children].filter(el=>el.style.display !== 'none');
+  if(visible.length <= 1) grid.style.gridTemplateColumns = '1fr';
+  else if(visible.length === 2) grid.style.gridTemplateColumns = '1fr 1fr';
+  else grid.style.gridTemplateColumns = 'repeat(2,1fr)';
+}
+function applyLCVisibility(code, show){
+  lcVisibility[code] = show;
+  ['time','spec'].forEach(kind=>{
+    const panel = document.getElementById(`lc_panel${code}_${kind}`);
+    if(panel) panel.style.display = show ? '' : 'none';
+  });
+  syncLCButtons(code);
+  updateLCGridLayout('lc_timeGrid');
+  updateLCGridLayout('lc_specGrid');
+}
+function toggleLCVisibility(code){ applyLCVisibility(code, !lcVisibility[code]); }
+function initLCVisibilityUI(){
+  ['UNRZ','PNRZ','RZ','BAMI','MAN'].forEach(code=>{
+    ['lc_eye'+code, 'lc_panelBtn_'+code+'_time', 'lc_panelBtn_'+code+'_spec'].forEach(id=>{
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('click', ()=>toggleLCVisibility(code));
+    });
+    syncLCButtons(code);
+  });
+  const showAll=document.getElementById('lc_showAllBtn');
+  const hideAll=document.getElementById('lc_hideAllBtn');
+  if(showAll) showAll.addEventListener('click', ()=>['UNRZ','PNRZ','RZ','BAMI','MAN'].forEach(code=>applyLCVisibility(code,true)));
+  if(hideAll) hideAll.addEventListener('click', ()=>['UNRZ','PNRZ','RZ','BAMI','MAN'].forEach(code=>applyLCVisibility(code,false)));
+  updateLCGridLayout('lc_timeGrid');
+  updateLCGridLayout('lc_specGrid');
+}
+
+
+/* ---------- startup help modal ---------- */
+const helpModal = document.getElementById('helpModal');
+const openHelpBtn = document.getElementById('openHelpBtn');
+const closeHelpX = document.getElementById('closeHelpX');
+const startUsingTool = document.getElementById('startUsingTool');
+const dontShowHelpAgain = document.getElementById('dontShowHelpAgain');
+function openHelpModal(){
+  helpModal.classList.add('show');
+  helpModal.setAttribute('aria-hidden','false');
+}
+function closeHelpModal(){
+  if(dontShowHelpAgain.checked) localStorage.setItem('cv_hide_help','true');
+  helpModal.classList.remove('show');
+  helpModal.setAttribute('aria-hidden','true');
+}
+if(openHelpBtn) openHelpBtn.addEventListener('click', openHelpModal);
+if(closeHelpX) closeHelpX.addEventListener('click', closeHelpModal);
+if(startUsingTool) startUsingTool.addEventListener('click', closeHelpModal);
+if(helpModal) helpModal.addEventListener('click', e=>{ if(e.target === helpModal) closeHelpModal(); });
+window.addEventListener('keydown', e=>{
+  if(e.key === 'Escape' && helpModal.classList.contains('show')) closeHelpModal();
+});
+
+/* ---------- themes ---------- */
+themeSelect.addEventListener('change', e=>{
+  document.body.classList.remove('theme-light','theme-dark','theme-grey');
+  document.body.classList.add('theme-' + e.target.value);
+  drawLC(); drawMD();
+});
+document.body.classList.add('theme-light');
+if(localStorage.getItem('cv_hide_help') !== 'true') window.addEventListener('load', openHelpModal);
+
+/* ---------- init ---------- */
+syncMD();
+updateModeGroups();
+initLCVisibilityUI();
+makeGroupsCollapsible();
+drawLC();
+drawMD();
+</script>
+</body>
+</html>
